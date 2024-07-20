@@ -1,0 +1,11 @@
+{
+  "webhook": false,
+  "bedSpam": true,
+  "waittime": 15,
+  "discordBot": "",
+  "discordID": "",
+  "usInstance": true,
+  "useBaf": false,
+  "delay": 200,
+  "clickDelay": 100
+}
