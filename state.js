@@ -1,5 +1,9 @@
 let states = [];
 function add(command, priority, state) {
+    if(states.length > 6){
+        states = [];
+        logmc(`§6[§bTPM§6] §cQueue got too big! Clearing it. Please report to icy`);
+    }
     states.push({
         command: command,
         priority: priority,

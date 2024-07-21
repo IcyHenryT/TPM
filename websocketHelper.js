@@ -1,42 +1,47 @@
 const EventEmitter = require('events');
-const config = require('./config.json');
 const { logmc } = require("./logger.js");
-const session = require(`./session.json`);
 const { sleep, formatNumber, noColorCodes } = require("./utils.js");
 const axios = require('axios');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
-const webhookURL = config.webhook;
-const webhook = webhookURL ? new Webhook(config.webhook) : false;
-if (webhook) {
-    webhook.setUsername('TPM');
-    webhook.setAvatar('https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless')
-}
+let {config} = require('./config.js');
+let webhook;
+let id;
 const ws = new EventEmitter();
 let connected = false;
 const WebSocket = require('ws');
 let websocket = false;
 let sidStep = 1;
-const id = config.discordID;
 let captchaSolves = [];
 let ping = "";
 if (id) ping = `<@${id}>`;
 async function startWS(sid) {
-    const link = `${config.usInstance ? 'ws://sky-us.' : 'wss://sky.'}coflnet.com/modsocket?version=${config.useBaf ? '1.5.0-afclient' : '1.5.5-Alpha'}&player=${session.ign}&SId=${sid}`;
-    console.log(link)
+    if (config) {
+        const webhookURL = config.webhook;
+        webhook = webhookURL ? new Webhook(webhookURL) : false;
+        if (webhook) {
+            webhook.setUsername('TPM');
+            webhook.setAvatar('https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless')
+        }
+        id = config.discordID;
+    }
+    const link = `${config.usInstance ? 'ws://sky-us.' : 'wss://sky.'}coflnet.com/modsocket?version=${config.useBafSocket ? '1.5.0-afclient' : '1.5.5-Alpha'}&player=${config.username}&SId=${sid}`;
     websocket = new WebSocket(link);
     websocket.on('open', () => {
-        console.log('Connected to WebSocket server');
+        logmc('§aConnected to WebSocket server');
         if (webhook) {
             const embed = new MessageBuilder()
                 .setFooter(`The "Perfect" Macro`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
                 .setTitle('Started flipping')
-                .addField('', `Logged in as \`${session.ign}\``)
-                .setThumbnail(`https://mc-heads.net/head/${session.uuid}.png`)
+                .addField('', `Logged in as \`${config.username}\``)
+                .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
                 .setColor(2615974);
             webhook.send(embed);
         }
         connected = true;
         ws.emit('open', '')
+        setTimeout(() => {
+            handleCommand('/cofl flip always');
+        }, 7500)
     });
 
     websocket.on('message', (message) => {
@@ -48,7 +53,7 @@ async function startWS(sid) {
 
     websocket.on('close', async () => {
         connected = false;
-        console.log('Disconnected from WebSocket server');
+        logmc('§cDisconnected from WebSocket server');
         await sleep(500);
         startWS(sid);
     });
@@ -67,8 +72,7 @@ function parseMessage(message) {
     switch (msg.type) {
         case "flip":
             ws.emit("flip", msg);
-            console.log(`Flip emitting at ${Date.now()}`)
-            if (!config.useBaf) {
+            if (!config.useBafSocket) {
                 text = fr.messages.map(obj => obj.text).join(' ');
             } else {
                 text = `§6[§bTPM§6] §eTrying to purchase ${fr.itemName}§e for ${formatNumber(fr.startingBid)} §7(target ${formatNumber(fr.target)})`
@@ -122,7 +126,7 @@ function parseMessage(message) {
 }
 function send(msg) {
     if (!websocket || !connected) {
-        console.log(`Can't send to websocket because not connected`);
+        logmc(`§6[§bTPM§6] §cCan't send to websocket because not connected`);
         return;
     }
     websocket.send(msg)
@@ -140,7 +144,6 @@ function handleCommand(command) {
     )
 }
 function sidListener() {
-    console.log(`Turned on!`)
     const onMessage = (message) => {
         if (!message.data) return;
         const data = JSON.parse(message.data);
@@ -148,7 +151,7 @@ function sidListener() {
             if (!data[1]?.text) return;
             const important = noColorCodes(data[1].text);
             if (important.includes('Please click this [LINK]')) {
-                console.log(`Use ${data[1].onClick} to log in!`);
+                logmc(`§6[§bTPM§6] §9Use ${data[1].onClick} to log in!`);
                 sidStep++;
                 ws.off('message', onMessage)
             }

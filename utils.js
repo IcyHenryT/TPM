@@ -18,16 +18,17 @@ function IHATETAXES(price) {
 function formatNumber(num) {
     let negative = num < 0;
     num = Math.abs(num);
-
+    let thingy;
     if (num >= 1000000000) {
-        return (num / 1000000000).toFixed(1) + 'B';
+        thingy = (num / 1000000000).toFixed(1) + 'B';
     } else if (num >= 1000000) {
-        return (num / 1000000).toFixed(1) + 'M';
+        thingy = (num / 1000000).toFixed(1) + 'M';
     } else if (num >= 1000) {
-        return (num / 1000).toFixed(1) + 'K';
+        thingy = (num / 1000).toFixed(1) + 'K';
     } else {
-        return negative ? '-' : '' + num.toString();
+        thingy = num.toString();
     }
+    return `${negative ? '-' : ''}${thingy}`;
 }
 function getWindowName(window) {
     if (!window) return null;
@@ -46,7 +47,7 @@ function saveData(folder, name, data) {
     const filePath = path.join(dirPath, `${name}.json`);
     fs.writeFile(filePath, jsonData, (err) => {
         if (err) {
-            logger.error(`Error writing data to ${filePath}: ${err}`);
+            console.error(`Error writing data to ${filePath}: ${err}`);
         }
     });
 }
