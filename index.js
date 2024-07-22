@@ -10,7 +10,6 @@ const ChatMessage = require('prismarine-chat')(registry);
 const { check, Window } = require('./window.js');
 const utils = require(`./utils.js`);
 const { randomUUID } = require('crypto');
-const { getFile, saveData, makeFile } = require('./fileSystem.js');
 const axios = require('axios');
 const stateManger = require(`./state.js`);
 const { noColorCodes, onlyNumbers, normalizeDate, IHATETAXES, formatNumber, sleep, getWindowName } = require('./utils.js');
@@ -99,18 +98,7 @@ if (!session) {
 async function start() {
   let uuid = config.uuid;
   let stuckFailsafe = null;
-  if (!uuid) {
-    axios
-      .get(`https://api.mojang.com/users/profiles/minecraft/${ign}`)
-      .then(response => {
-        uuid = response.data.id;
-        config.uuid = uuid;
-        updateConfig(config)
-      })
-      .catch(error => {
-        console.error('Error fetching UUID:', error);
-      });
-  }
+
   // logging
   /*const bot = mineflayer.createBot({
     host: 'hypixel.net',
@@ -136,8 +124,21 @@ async function start() {
     version: '1.8.9',
     host: 'play.hypixel.net',
   });
+  await makePackets(bot._client);
+  const packets = getPackets();
   bot.once('login', () => {
     startWS(session);
+    if (!uuid) {
+      axios.get(`https://api.mojang.com/users/profiles/minecraft/${bot.username}`)
+        .then(response => {
+          uuid = response.data.id;
+          config.uuid = uuid;
+          updateConfig(config)
+        })
+        .catch(error => {
+          console.error(`Error fetching UUID for ign ${bot.username}:`, error);
+        });
+    }
   })
   bot.state = 'moving';
   let firstGui;
@@ -385,11 +386,11 @@ async function start() {
   async function claimSold() {
     bot.chat('/ah');
     await sleep(300);
-    if (getWindowName(bot.currentWindow).includes('Auction House')) {
+    if (getWindowName(bot.currentWindow)?.includes('Auction House')) {
       bot.currentWindow.requiresConfirmation = false;
       bot.clickWindow(15, 0, 0);
       await sleep(300);
-      if (getWindowName(bot.currentWindow).includes('Manage Auctions')) {
+      if (getWindowName(bot.currentWindow)?.includes('Manage Auctions')) {
         bot.currentWindow.requiresConfirmation = false;
         const items = bot.currentWindow?.slots;
         items.forEach((item, index) => {
