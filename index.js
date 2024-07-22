@@ -280,7 +280,7 @@ async function start() {
       case "The auctioneer has closed this auction!":
       case "You don't have enough coins to afford this bid!":
         bot.state = null;
-        bot.closeWindow(bot.currentWindow);
+        if(getWindowName(bot.currentWindow))bot.closeWindow(bot.currentWindow);
         break;
       case '/limbo for more information.':
         await sleep(5000);
