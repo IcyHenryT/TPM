@@ -1,4 +1,7 @@
+const {logmc} = require('./logger.js');
+
 let states = [];
+
 function add(command, priority, state) {
     if(states.length > 6){
         states = [];

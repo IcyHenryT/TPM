@@ -12,6 +12,7 @@
             "packetStuff.js",
             "utils.js",
             "websocketHelper.js",
+            "fileSystem.js",
             "logger.js",
             "window.js",
             "state.js",

@@ -10,6 +10,7 @@ const ChatMessage = require('prismarine-chat')(registry);
 const { check, Window } = require('./window.js');
 const utils = require(`./utils.js`);
 const { randomUUID } = require('crypto');
+const { getFile, saveData, makeFile } = require('./fileSystem.js');
 const axios = require('axios');
 const stateManger = require(`./state.js`);
 const { noColorCodes, onlyNumbers, normalizeDate, IHATETAXES, formatNumber, sleep, getWindowName } = require('./utils.js');
@@ -110,7 +111,6 @@ async function start() {
         console.error('Error fetching UUID:', error);
       });
   }
-  startWS(session);
   // logging
   /*const bot = mineflayer.createBot({
     host: 'hypixel.net',
@@ -136,8 +136,9 @@ async function start() {
     version: '1.8.9',
     host: 'play.hypixel.net',
   });
-  await makePackets(bot._client);
-  const packets = getPackets();
+  bot.once('login', () => {
+    startWS(session);
+  })
   bot.state = 'moving';
   let firstGui;
   Window.on('newWindow', async window => {
@@ -408,10 +409,10 @@ async function start() {
           }
         });
       } else {
-        console.error(`Didn't properly claim sold auction not finding Manage auctions`);
+        console.error(`Didn't properly claim sold auction not finding Manage auctions. Found ${getWindowName(bot.currentWindow)}`);
       }
     } else {
-      console.error(`Didn't properly claim sold auction not finding Auction House`);
+      console.error(`Didn't properly claim sold auction not finding Auction House. Found ${getWindowName(bot.currentWindow)}`);
     }
     return;
   }
