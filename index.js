@@ -503,7 +503,7 @@ async function start() {
       };
       if (currentTime < ending) {
         bed = '[BED]';
-        webhookPricing[noColorCodes(itemName)].bed = bed;
+        webhookPricing[noColorCodes(itemName).replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "")].bed = bed;
         //console.log(`bed found, waiting ${ending - Date.now() - waittime} ending: ${ending}`);
         setTimeout(async () => {
           for (i = 0; i < 5; i++) {
