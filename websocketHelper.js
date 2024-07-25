@@ -34,7 +34,7 @@ async function startWS(sid) {
                 .setTitle('Started flipping')
                 .addField('', `Logged in as \`${config.username}\``)
                 .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
-                .setColor(2615974);
+                .setColor(16760576);
             webhook.send(embed);
         }
         connected = true;

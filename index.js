@@ -25,7 +25,7 @@ let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingB
 
 function testign() {
   if (config.username.trim() === '') {
-    ign = prompt(`What's your IGN (caps matter)?`);
+    ign = prompt(`What's your IGN (caps matter): `);
     if (ign) {
       config.username = ign;
       updateConfig(config)
@@ -38,7 +38,7 @@ function testign() {
 
 
 function testServer() {
-  const userInput = prompt('Use the US Instance? It requires prem+ (y / n)');
+  const userInput = prompt('Use the US Instance? It requires prem+ (y / n): ');
   if (userInput.trim().toLowerCase() === 'y') {
     usInstance = true;
   } else if (userInput.trim().toLowerCase() === 'n') {
@@ -84,7 +84,8 @@ webhookPricing = {};
 let privacySettings;
 
 let lastGui = 0;
-
+let bedFailed = false;
+let closedGui = false;
 
 
 if (!session) {
@@ -172,13 +173,14 @@ async function start() {
     } else if (name === 'Confirm Purchase') {
       bot.clickWindow(11, 0, 0);
       logmc(`§6[§bTPM§6] §3Confirm at ${Date.now() - firstGui}ms`);
-      for (i = 1; i < 11; i++) {
-        if (!bedSpam) i = 11;
-        await sleep(30);
-        if (getWindowName(bot.currentWindow)) {
-          bot.clickWindow(11, 0, 0)
-        } else {
-          i = 11;
+      if (bedSpam || bedFailed) {
+        for (i = 1; i < 11; i++) {
+          await sleep(30);
+          if (getWindowName(bot.currentWindow)) {
+            bot.clickWindow(11, 0, 0)
+          } else {
+            i = 11;
+          }
         }
       }
       bot.state = null;
@@ -204,6 +206,10 @@ async function start() {
         await claimSold();
         bot.state = null;
       } else {
+        if (command.includes('/viewauction')) {
+          bedFailed = true;
+          currentOpen = command.split(' ')[1];
+        }
         bot.chat(command);
       }
       stateManger.next();
@@ -280,7 +286,8 @@ async function start() {
       case "The auctioneer has closed this auction!":
       case "You don't have enough coins to afford this bid!":
         bot.state = null;
-        if(getWindowName(bot.currentWindow))bot.closeWindow(bot.currentWindow);
+        if (getWindowName(bot.currentWindow) && !closedGui) bot.closeWindow(bot.currentWindow);
+        closedGui = true;
         break;
       case '/limbo for more information.':
         await sleep(5000);
@@ -296,7 +303,8 @@ async function start() {
     const regex1 = /You purchased (.+?) for ([\d,]+) coins!/;
     const match1 = text.match(regex1);
     if (match1) {
-      const item = utils.noColorCodes(match1[1]);
+      if(bot.state == 'buying') bot.state = null;
+      const item = utils.noColorCodes(match1[1]).replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "");
       const price = match1[2];
       if (!webhookPricing[item]) {
         console.log(`Didn't find ${item} in ${JSON.stringify(webhookPricing)} Please report this to icyhenryt`);
@@ -309,7 +317,7 @@ async function start() {
         const embed = new MessageBuilder()
           .setFooter(`The "Perfect" Macro - Found by ${webhookPricing[item].finder}`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
           .setTitle('Item purchased')
-          .addField('', `Bought \`${item}\` for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) [click](${auctionUrl}) ${itemBed}`)
+          .addField('', `Bought \`${text.match(regex1)}\` for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) [click](${auctionUrl}) ${itemBed}`)
           .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
           .setColor(2615974);
         webhook.send(embed);
@@ -423,19 +431,23 @@ async function start() {
     let itemName;
     let auctionID;
     let currentTime = Date.now();
+    bedFailed = false;
+    closedGui = false;
     if (usingBaf) {
       if (!bot.state && currentTime - lastAction > delay) {
         auctionID = data.id;
         packets.sendMessage(`/viewauction ${auctionID}`);
-        itemName = data.itemName.replace('!', '').replace('-us', '').replace('.', '');
+        itemName = data.itemName.replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "");
         lastAction = currentTime;
         logmc(`§6[§bTPM§6] §8Opening ${itemName}`);
         currentOpen = data.id;
       } else {
         auctionID = data.id;
-        itemName = data.itemName.replace('!', '').replace('-us', '').replace('.', '');
-        logmc(`§6[§bTPM§6] §aAdding ${itemName}§3 to the pipeline because state is ${bot.state}!`);
-        stateManger.add(`/viewauction ${auctionID}`, Infinity, 'buying');
+        itemName = data.itemName.replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "");
+        if (bot.state !== 'moving') {
+          logmc(`§3Adding ${itemName}§3 to the pipeline because state is ${bot.state}!`);
+          stateManger.add(`/viewauction ${auctionID}`, 69, 'buying');
+        }
       }
       const ending = new Date(normalizeDate(data.purchaseAt)).getTime();
       webhookPricing[noColorCodes(itemName)] = {
@@ -482,7 +494,7 @@ async function start() {
         stateManger.add(`/viewauction ${auctionID}`, Infinity, 'buying');
       }
       const ending = new Date(normalizeDate(data.auction.start)).getTime() + 20000;
-      webhookPricing[noColorCodes(itemName)] = {
+      webhookPricing[noColorCodes(itemName).replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "")] = {
         target: data.target,
         price: data.auction.startingBid,
         auctionId: auctionID,
@@ -523,7 +535,7 @@ async function start() {
   });
   setInterval(() => {
     //BED SPAM
-    if (!bedSpam) return;
+    if (!bedSpam && !bedFailed) return;
     if (getWindowName(bot.currentWindow)?.includes('BIN Auction View')) {
       const item = bot.currentWindow?.slots[31]?.name;
       if (item?.includes('bed')) {
