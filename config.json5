@@ -1,0 +1,40 @@
+{
+  // Put username of your account here.
+  "username": "COINGENERATOR",
+  
+  // Put your discord webhook here.
+  "webhook": "",
+  
+  //True or false
+  "bedSpam": false,
+
+  //The time before bed timings clicks 
+  "waittime": 15,
+
+  //BAF Websocket, gives no captchas but you get more delay
+  "useBafSocket": true,
+
+  //Requires prem+
+  "usInstance": true,
+
+  //Delay between bed spam clicking (ideally use 100-125) DOES NOTHING WITHOUT BED SPAM ENABLED
+  "clickDelay": 125,
+
+  //Delay between opening flips
+  "delay": 250,
+
+  //Currently doesn't do anything
+  "dicordBotToken": "",
+
+  //Pings on captcha
+  "discordID": "",
+
+  // don't touch everything below
+  "session": "d6349295-0159-4236-a8f6-2d843804517d",
+
+  // terms of service
+  "TOS": "Accepted",
+
+  //Account UUID
+  "uuid" : "0c1475bfe87749b4b33e48ec983a75ea"
+}

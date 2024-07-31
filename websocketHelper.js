@@ -1,11 +1,11 @@
 const EventEmitter = require('events');
-const { logmc } = require("./logger.js");
+const { logmc, debug, error } = require("./logger.js");
 const { sleep, formatNumber, noColorCodes } = require("./utils.js");
 const axios = require('axios');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
 let {config} = require('./config.js');
 let webhook;
-let id;
+let id = config.discordID;
 const ws = new EventEmitter();
 let connected = false;
 const WebSocket = require('ws');
@@ -24,7 +24,8 @@ async function startWS(sid) {
         }
         id = config.discordID;
     }
-    const link = `${config.usInstance ? 'ws://sky-us.' : 'wss://sky.'}coflnet.com/modsocket?version=${config.useBafSocket ? '1.5.0-afclient' : '1.5.5-Alpha'}&player=${config.username}&SId=${sid}`;
+    const link = `${config.usInstance ? 'ws://sky-us.' : 'wss://sky.'}coflnet.com/modsocket?version=${config.useBafSocket ? '1.5.0-af' : '1.5.5-Alpha'}&player=${config.username}&SId=${sid}`;
+    debug(`Connecting to ${link}`)
     websocket = new WebSocket(link);
     websocket.on('open', () => {
         logmc('§aConnected to WebSocket server');
@@ -54,12 +55,12 @@ async function startWS(sid) {
     websocket.on('close', async () => {
         connected = false;
         logmc('§cDisconnected from WebSocket server');
-        await sleep(500);
-        startWS(sid);
+        await sleep(5000);
+        if(!connected) startWS(sid);
     });
 
     websocket.on('error', (err) => {
-        console.error('WebSocket error:', err.message);
+        error('WebSocket error:', err.message);
         websocket.close();
     });
 }
@@ -112,6 +113,7 @@ function parseMessage(message) {
         case "ping":
         case "countdown":
         case "loggedIn":
+        case "createAuction":
             break;
         case "getInventory":
             ws.emit('getInventory', msg);

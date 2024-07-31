@@ -1,6 +1,18 @@
-function logmc(string) {//thanks baf and gpt
+const { createLogger, format, transports } = require('winston');
+const { combine, printf, colorize, timestamp } = format;
+const fs = require('fs');
+
+// Function to reset latest.log
+function resetLogFile(logFilePath) {
+    if (!fs.existsSync(logFilePath)) {
+        fs.writeFileSync(logFilePath, ''); // Create the file if it does not exist
+    } else {
+        fs.truncateSync(logFilePath, 0); // Reset the file if it exists
+    }
+}
+function logmc(string) { //thanks baf and gpt
     let msg = '';
-    if(!string) return;
+    if (!string) return;
     let split = string.split('§');
     msg += split[0];
 
@@ -14,8 +26,9 @@ function logmc(string) {//thanks baf and gpt
         msg += message;
     }
 
-    console.log('\x1b[0m\x1b[1m\x1b[90m' + msg + '\x1b[0m');
+    info('\x1b[0m\x1b[1m\x1b[90m' + msg + '\x1b[0m');
 }
+
 const colors = {
     '0': '\x1b[30m', // black
     '1': '\x1b[34m', // dark blue
@@ -34,4 +47,83 @@ const colors = {
     'e': '\x1b[93m', // yellow
     'f': '\x1b[97m', // white
 };
-module.exports = {logmc};
+
+const logDirectory = `./error.log`;
+resetLogFile(logDirectory);
+
+const latestLogPath = './latest.log';
+resetLogFile(latestLogPath);
+
+const regex = /[a-zA-Z0-9!@#$%^&*()_+\-=[\]{}|;:'",. <>/?`~\\]/g;
+
+// Regex to match ANSI escape sequences
+const ansiRegex = /\x1b\[[0-9;]*m/g;
+
+const myFormat = printf(({ message }) => {
+    return message;
+});
+
+const plainFormat = printf(({ message }) => {
+    // Remove ANSI escape sequences
+    message = message.replace(ansiRegex, '');
+    // Keep only the characters that match the regex
+    message = message.match(regex)?.join('') || '';
+    return message;
+});
+const logger = createLogger({
+    level: 'silly',
+    transports: [
+        new transports.Console({
+            level: 'info',
+            format: combine(
+                colorize(),
+                myFormat
+            )
+        }),
+        new transports.File({
+            filename: logDirectory,
+            level: 'error',
+            format: plainFormat
+        }),
+        new transports.File({
+            filename: latestLogPath,
+            format: plainFormat
+        })
+    ]
+});
+
+function log(message, type) {
+    setTimeout(() => {
+        switch (type) {
+            case "silly":
+                logger.silly(message);
+                break;
+            case "error":
+                logger.error(message);
+                break;
+            case "info":
+                logger.info(message);
+                break;
+            case "debug":
+                logger.debug(message);
+        }
+    }, 1000);
+}
+
+function silly(...args) {
+    log(args.join(':'), "silly");
+}
+
+function debug(...args) {
+    log(args.join(':'), "debug");
+}
+
+function error(...args) {
+    log(args.join(':'), "error");
+}
+
+function info(...args) {
+    log(args.join(':'), "info");
+}
+
+module.exports = { silly, debug, error, info, logmc };

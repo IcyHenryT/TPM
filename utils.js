@@ -78,5 +78,71 @@ function normalizeDate(dateString) {
         return dateString; // Fallback to the original string
     }
 }
+
+function getPurse(bot) {
+    return new Promise((resolve, reject) => {
+        try {
+            let pursey;
+            let scoreboard = bot.scoreboard.sidebar.items.map(item => item.displayName.getText(null).replace(item.name, ''));
+            scoreboard.forEach(e => {
+                if (e.includes('Purse:')) {
+                    let purseString = e.substring(e.indexOf(':') + 1).trim();
+                    pursey = parseInt(purseString.replace(/\D/g, ''), 10);
+                }
+            });
+            resolve(pursey);
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+function relistCheck(currentlisted, totalslots, botstate) {
+    console.log(`listed ${currentlisted}, slots ${totalslots}, state ${botstate}`)
+    if ((botstate == null || botstate == 'listing') && (currentlisted != totalslots)) {
+        //console.log(`Current ah stuff your ah is at ${currentlisted} out of ${totalslots}`)
+        return true
+    }
+    else if (botstate == "buying" || botstate == "listing" || botstate == "claiming" || botstate == "moving" || currentlisted == totalslots) {
+        if (currentlisted == totalslots) {
+            //ChatLib.chat(`Not relisting bc your ah is full at ${currentlisted} out of ${totalslots}`)
+            //console.log("Not relisting bc your ah is full at", currentlisted, "out of", totalslots)
+            return false
+        } else if (botstate || botstate !== 'listing') {
+            //console.log("Not relisting bc bot is in state", botstate)
+            return false
+        }
+    } else {
+        //console.log("No purchased AHIDs to relist");
+        return false
+    }
+}
+
+function addCommasToNumber(number) {
+    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function nicerFinders(finder) {
+    switch (finder) {
+        case "USER":
+            return "User";
+        case "SNIPER_MEDIAN":
+            return 'Median Sniper';
+        case "TFM":
+            return "TFM";
+        case "AI":
+            return 'AI';
+        case "CraftCost":
+            return "Craft Cost";
+        case "SNIPER":
+            return 'Sniper';
+        case "STONKS":
+            return 'Stonks';
+        case "FLIPPER":
+            return 'Flipper'
+    }
+    return finder;
+}
+
 const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
-module.exports = { noColorCodes, onlyNumbers, normalizeDate, IHATETAXES, formatNumber, sleep, getWindowName, saveData }
+module.exports = { noColorCodes, onlyNumbers, normalizeDate, IHATETAXES, formatNumber, sleep, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders }

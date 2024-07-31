@@ -32,6 +32,7 @@
         "discord-webhook-node": "^1.1.8",
         "golden-fleece": "^1.0.9",
         "json5": "^2.2.3",
+        "prismarine-nbt": "^2.5.0",
         "prompt-sync": "^4.2.0"
     }
 }
