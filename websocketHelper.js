@@ -152,7 +152,7 @@ function handleCommand(command) {
     )
 }
 function sidListener(newConfig) {
-    console.log(`Sid listener go go go`);
+    //console.log(`Sid listener go go go`);
     const onMessage = (message) => {
         //console.log(JSON.stringify(message));
         if (!message.data) return;
@@ -186,10 +186,11 @@ function sidListener(newConfig) {
 }
 function checkCaptcha(thingy) {
     const parse = JSON.parse(thingy);
-    if (parse.type !== 'writeToChat') return false;
+    console.log(JSON.stringify(parse));
+    if (parse.type !== 'chatMessage') return false;
     parse.data = JSON.parse(parse.data);
     const prettyJsonString = JSON.stringify(parse, null, 2);
-    if (prettyJsonString.indexOf('/cofl captcha') !== -1 && !prettyJsonString.includes('You are currently delayed for likely being afk.')) {
+    if (prettyJsonString.indexOf('/cofl captcha') !== -1 && !prettyJsonString.includes('You are currently delayed for likely being afk.') && !prettyJsonString.includes('is not known.') && !prettyJsonString.includes('[§1C§6hat§f]')) {
         sendCaptcha(parse)
         return true;
     }

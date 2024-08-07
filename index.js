@@ -226,16 +226,28 @@ async function getReady() {
                       try { toclaim2 = cleanedLoreLines.find(line => /Your auctions have \d+ bids/.test(line)); } catch { }
                       if (toclaim1) {
                         await sleep(500)
-                        bot.currentWindow.requiresConfirmation = false;
-                        bot.clickWindow(15, 0, 0)
+                        if (bot.currentWindow) {
+                          bot.currentWindow.requiresConfirmation = false;
+                          bot.clickWindow(15, 0, 0)
+                        } else {
+                          error(`Didn't get a window step 1 of ready`)
+                        }
                         await betterOnce(bot, 'windowOpen');
                         await sleep(500)
-                        bot.currentWindow.requiresConfirmation = false;
-                        bot.clickWindow(10, 0, 0)
+                        if (bot.currentWindow) {
+                          bot.currentWindow.requiresConfirmation = false;
+                          bot.clickWindow(10, 0, 0)
+                        } else {
+                          error(`Didn't get a window step 2 of ready`)
+                        }
                         await betterOnce(bot, 'windowOpen');
                         await sleep(500)
-                        bot.currentWindow.requiresConfirmation = false;
-                        bot.clickWindow(31, 0, 0)
+                        if (bot.currentWindow) {
+                          bot.currentWindow.requiresConfirmation = false;
+                          bot.clickWindow(31, 0, 0)
+                        } else {
+                          error(`Didn't get a window step 3 of ready`)
+                        }
                         debug("claimed 1 already sold auction")
                         currentlisted--;
                         debug("currentlisted updated to", currentlisted)
@@ -245,8 +257,10 @@ async function getReady() {
                         let bids = match && match[1] ? parseInt(match[1], 10) : 0;
 
                         await sleep(500);
-                        bot.currentWindow.requiresConfirmation = false;
-                        bot.clickWindow(15, 0, 0);
+                        if (bot.currentWindow) {
+                          bot.currentWindow.requiresConfirmation = false;
+                          bot.clickWindow(15, 0, 0)
+                        }
                         await betterOnce(bot, 'windowOpen');
                         await sleep(500)
 
@@ -257,14 +271,14 @@ async function getReady() {
                           if (item && item.nbt && item.nbt.value.display && item.nbt.value.display.value.Name) {
                             let itemName = item.nbt.value.display.value.Name.value;
                             if (!config.ownAuctions) {
-                              if (itemName.includes("Claim All")) {
+                              if (itemName.includes("Claim All") && bot.currentWindow) {
                                 //console.log(`Found 'Claim All' at slot ${slot}`);
                                 // Perform your action here
                                 bot.currentWindow.requiresConfirmation = false;
                                 bot.clickWindow(slot, 0, 0);
                               }
                             } else {
-                              if (itemName.includes("Claim Your")) {
+                              if (itemName.includes("Claim Your") && bot.currentWindow) {
                                 //console.log(`Found 'Claim Your Listings Only' at slot ${slot}`);
                                 // Perform your action here
                                 bot.currentWindow.requiresConfirmation = false;
@@ -1117,7 +1131,7 @@ async function start() {
           tag: data.auction.tag,
           profit: IHATETAXES(data.target) - data.auction.startingBid
         };
-        const profit = utils.IHATETAXES(webhookPricing[item].target) - utils.onlyNumbers(price);
+        //const profit = utils.IHATETAXES(webhookPricing[item].target) - utils.onlyNumbers(price);
       } else {
         auctionID = data.id;
         itemName = data.auction.itemName;
