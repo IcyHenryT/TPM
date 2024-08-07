@@ -38,12 +38,12 @@ async function startWS(sid) {
                 .setColor(16760576);
             webhook.send(embed);
         }
-        setTimeout(() => {
+        /*setTimeout(() => {
             handleCommand('/cofl flip false');
             setTimeout(() => {
                 handleCommand('/cofl flip true');
             }, 3000)
-        }, 3000)
+        }, 3000)*/
         connected = true;
         ws.emit('open', '')
     });
@@ -123,6 +123,7 @@ function parseMessage(message) {
             break;
         case "privacySettings":
             ws.emit('settings', msg);
+            handleCommand(`/cofl flip always`)
             /*setTimeout(() => {
                 handleCommand('/cofl flip always');
             }, 7500)*/
@@ -152,7 +153,7 @@ function handleCommand(command) {
     )
 }
 function sidListener(newConfig) {
-    //console.log(`Sid listener go go go`);
+    console.log(`Sid listener go go go`);
     const onMessage = (message) => {
         //console.log(JSON.stringify(message));
         if (!message.data) return;
@@ -162,12 +163,14 @@ function sidListener(newConfig) {
             const important = noColorCodes(data[1].text);
             if (important.includes('Please click this [LINK]')) {
                 logmc(`§6[§bTPM§6] §9Use ${data[1].onClick} to log in!`);
+                console.log(`Found reg socket login`)
                 sidStep++;
                 ws.on('settings', loggedIn)
                 ws.off('message', onMessage)
                 handleCommand('/cofl flip false');
             } else if (important.includes('Please click') && important.includes('to login')) {
                 sidStep++;
+                console.log(`Found baf socket login`)
                 ws.on('settings', loggedIn);
                 ws.off('message', onMessage);
                 handleCommand('/cofl flip false');
@@ -179,14 +182,13 @@ function sidListener(newConfig) {
         if (sidStep === 2) {
             updateConfig(newConfig)
             ws.off('settings', loggedIn);
-            handleCommand(`/cofl flip always`)
         }
     }
     ws.on('message', onMessage);
 }
 function checkCaptcha(thingy) {
     const parse = JSON.parse(thingy);
-    console.log(JSON.stringify(parse));
+    //console.log(JSON.stringify(parse));
     if (parse.type !== 'chatMessage') return false;
     parse.data = JSON.parse(parse.data);
     const prettyJsonString = JSON.stringify(parse, null, 2);

@@ -234,6 +234,12 @@ async function checkCoflDelay(ws, handleCommand) {
                 //console.log(`found ${match[1]} delay`);
                 resolve(`${match[1]}s`);
             }
+            if(message.includes('You are currently not delayed at all')){
+                ws.off('messageText', listen);
+                sent = true;
+                //console.log(`found ${match[1]} delay`);
+                resolve(`0s`);
+            }
         };
         ws.on('messageText', listen);
         setTimeout(() => {
