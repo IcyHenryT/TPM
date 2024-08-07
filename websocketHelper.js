@@ -124,6 +124,7 @@ function parseMessage(message) {
         case "privacySettings":
             ws.emit('settings', msg);
             handleCommand(`/cofl flip always`)
+            //handleCommand('/cofl get json');
             /*setTimeout(() => {
                 handleCommand('/cofl flip always');
             }, 7500)*/
@@ -153,7 +154,7 @@ function handleCommand(command) {
     )
 }
 function sidListener(newConfig) {
-    console.log(`Sid listener go go go`);
+    //console.log(`Sid listener go go go`);
     const onMessage = (message) => {
         //console.log(JSON.stringify(message));
         if (!message.data) return;
@@ -163,17 +164,17 @@ function sidListener(newConfig) {
             const important = noColorCodes(data[1].text);
             if (important.includes('Please click this [LINK]')) {
                 logmc(`§6[§bTPM§6] §9Use ${data[1].onClick} to log in!`);
-                console.log(`Found reg socket login`)
+                //console.log(`Found reg socket login`)
                 sidStep++;
                 ws.on('settings', loggedIn)
                 ws.off('message', onMessage)
                 handleCommand('/cofl flip false');
             } else if (important.includes('Please click') && important.includes('to login')) {
                 sidStep++;
-                console.log(`Found baf socket login`)
+                //console.log(`Found baf socket login`)
                 ws.on('settings', loggedIn);
                 ws.off('message', onMessage);
-                handleCommand('/cofl flip false');
+                handleCommand('/cofl s maxItemsInInventory 1');
             }
         }
     };

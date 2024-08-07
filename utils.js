@@ -99,7 +99,7 @@ function getPurse(bot) {
 }
 
 function relistCheck(currentlisted, totalslots, botstate) {
-    console.log(`listed ${currentlisted}, slots ${totalslots}, state ${botstate}`)
+    //console.log(`listed ${currentlisted}, slots ${totalslots}, state ${botstate}`)
     if ((botstate == null || botstate == 'listing') && (currentlisted != totalslots)) {
         //console.log(`Current ah stuff your ah is at ${currentlisted} out of ${totalslots}`)
         return true
@@ -176,6 +176,7 @@ async function checkHypixelPing(bot) {
             let text = noColorCodes(message.getText(null));
             if (type === 'chat') {
                 const pingwarsRegex = /Your Ping - ([\d,]+)ms/;
+                const cooldownRegex = /You must wait to use social commands again!/;
                 const match = text.match(pingwarsRegex);
                 if (match) {
                     bot.off('message', listen);
@@ -183,6 +184,13 @@ async function checkHypixelPing(bot) {
                     //console.log(`found ${match[1]}ms hypixel ping`);
                     resolve(`${match[1]}ms`);
                 }
+                if (text.match(cooldownRegex)) {
+                    bot.off('message', listen);
+                    sent = true;
+                    //console.log(`found ${match[1]}ms hypixel ping`);
+                    resolve(`Pingwars is on cooldown :(`);
+                }
+
             }
         };
         setTimeout(() => {
@@ -234,7 +242,7 @@ async function checkCoflDelay(ws, handleCommand) {
                 //console.log(`found ${match[1]} delay`);
                 resolve(`${match[1]}s`);
             }
-            if(message.includes('You are currently not delayed at all')){
+            if (message.includes('You are currently not delayed at all')) {
                 ws.off('messageText', listen);
                 sent = true;
                 //console.log(`found ${match[1]} delay`);

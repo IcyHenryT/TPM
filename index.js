@@ -117,6 +117,7 @@ let uuidFound = false;
 let lastLeftBuying;
 let waitting;
 let boughtItems = 0, soldItems = 0;
+let lastRelistCheck = Date.now();
 
 async function getReady() {
   ranit = true;
@@ -560,7 +561,6 @@ async function start() {
     host: 'play.hypixel.net',
   });
   await makePackets(bot._client);
-  updateConfig(config);
   const packets = getPackets();
   bot.once('login', () => {
     if (!uuid) {
@@ -637,6 +637,7 @@ async function start() {
   let old = bot.state;
   setInterval(async () => {
     //Queue
+    let toRun = false;
     const current = stateManger.get();
     if (bot.state !== old) debug(`Bot state updated: ${bot.state}`);
     old = bot.state;
@@ -646,13 +647,16 @@ async function start() {
         bot.state = current.state;
         bot.state = 'claiming';
         await claimBought();
+        toRun = 'claimBought';
         bot.state = null;
       } else if (command === 'sold') {
         bot.state = current.state;
         bot.state = 'claiming';
         await claimSold();
+        toRun = 'claimSold';
         bot.state = null;
       } else if (command?.id) {
+        toRun = 'listing'
         if (currentlisted == totalslots) {
           debug(`AH full, not listing from queue`);
           return;
@@ -660,14 +664,15 @@ async function start() {
         if (fullInv) {
           logmc("§6[§bTPM§6] §cNot attempting to relist because your inventory is full. You will need to log in and clear your inventory to continue")
           bot.state = null;
-        } else {
+        } else if(Date.now() - lastRelistCheck > 10000) {
+          lastRelistCheck = Date.now()
           await sleep(10000)
           if (relistCheck(currentlisted, totalslots, bot.state)) {
             bot.state = "listing";
             await sleep(500);
             relistHandler(command.id, command.targets);
           } else {
-            stateManger.add(command, Infinity, 'listing');
+            return;
           }
         }
       } else {
@@ -675,22 +680,24 @@ async function start() {
           bot.state = current.state;
           const ahhhhh = webhookPricing[command];
           if (ahhhhh) {//crash :(
-            var ahid = ahhhhh.id
+            const ahid = ahhhhh.id
+            bedFailed = true;
+            currentOpen = ahid
+            bot.chat(`/viewauction ${ahid}`);
           } else {
-            error(`Ahhh didn't find ${command} in ${JSON.stringify(webhookPricing)}`);
+            error(`Ahhh didn't find ${command} in ${JSON.stringify(webhookPricing)} leaving queue and not changing state`);
+            stateManger.next();
+            return;
           }
-          bedFailed = true;
-          currentOpen = ahid
-          bot.chat(`/viewauction ${ahid}`);
         } catch (e) {
           error(e)
         }
       }
       stateManger.next();
       lastAction = Date.now();
-      debug(`Turning state into ${bot.state} and running ${current.command}`);
+      debug(`Turning state into ${bot.state} and running ${toRun}`);
     }
-  }, 1);
+  }, delay);
   bot.once('spawn', async () => {
     //Auto join SB
     await bot.waitForChunksToLoad();
