@@ -1,16 +1,47 @@
 const { createLogger, format, transports } = require('winston');
-const { combine, printf, colorize, timestamp } = format;
+const { combine, printf, colorize } = format;
 const fs = require('fs');
 
-// Function to reset latest.log
+const directoryPath = './logs';
+
+if (!fs.existsSync(directoryPath)) {
+    fs.mkdirSync(directoryPath);
+}
+function formatDate() {
+    const date = new Date();
+
+    let hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'pm' : 'am';
+
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    const strMinutes = minutes < 10 ? '0' + minutes : minutes;
+
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const year = date.getFullYear().toString().slice(-2);
+
+    // Format the date to be filename-friendly
+    const formattedDate = `${month}-${day}-${year}_${hours}-${strMinutes}${ampm}`;
+    return formattedDate;
+}
+const time = formatDate();
+const errorLogPath = `${directoryPath}/error.log`;
+const latestLogPath = `${directoryPath}/latest.log`;
+const timelog = `${directoryPath}/${time}.log`;
+
 function resetLogFile(logFilePath) {
     if (!fs.existsSync(logFilePath)) {
-        fs.writeFileSync(logFilePath, ''); // Create the file if it does not exist
+        fs.writeFileSync(logFilePath, ''); 
     } else {
-        fs.truncateSync(logFilePath, 0); // Reset the file if it exists
+        fs.truncateSync(logFilePath, 0); 
     }
 }
-function logmc(string) { //thanks baf and gpt
+
+resetLogFile(latestLogPath);
+
+function logmc(string) {
     let msg = '';
     if (!string) return;
     let split = string.split('§');
@@ -48,16 +79,10 @@ const colors = {
     'f': '\x1b[97m', // white
 };
 
-const logDirectory = `./error.log`;
-resetLogFile(logDirectory);
-
-const latestLogPath = './latest.log';
-resetLogFile(latestLogPath);
-
-const regex = /[a-zA-Z0-9!@#$%^&*()_+\-=[\]{}|;:'",. <>/?`~\\]/g;
-
 // Regex to match ANSI escape sequences
 const ansiRegex = /\x1b\[[0-9;]*m/g;
+
+const regex = /[a-zA-Z0-9!@#$%^&*()_+\-=[\]{}|;:'",. <>/?`~\\]/g;
 
 const myFormat = printf(({ message }) => {
     return message;
@@ -70,6 +95,7 @@ const plainFormat = printf(({ message }) => {
     message = message.match(regex)?.join('') || '';
     return message;
 });
+
 const logger = createLogger({
     level: 'silly',
     transports: [
@@ -81,33 +107,35 @@ const logger = createLogger({
             )
         }),
         new transports.File({
-            filename: logDirectory,
+            filename: errorLogPath,
             level: 'error',
             format: plainFormat
         }),
         new transports.File({
             filename: latestLogPath,
             format: plainFormat
+        }),
+        new transports.File({
+            filename: timelog,
+            format: plainFormat
         })
     ]
 });
 
 function log(message, type) {
-    setTimeout(() => {
-        switch (type) {
-            case "silly":
-                logger.silly(message);
-                break;
-            case "error":
-                logger.error(message);
-                break;
-            case "info":
-                logger.info(message);
-                break;
-            case "debug":
-                logger.debug(message);
-        }
-    }, 1000);
+    switch (type) {
+        case "silly":
+            logger.silly(message);
+            break;
+        case "error":
+            logger.error(message);
+            break;
+        case "info":
+            logger.info(message);
+            break;
+        case "debug":
+            logger.debug(message);
+    }
 }
 
 function silly(...args) {

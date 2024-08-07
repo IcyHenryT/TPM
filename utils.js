@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { debug } = require('./logger.js');
 function noColorCodes(text) {
     return text.replace(/§./g, '')
 }
@@ -144,5 +145,152 @@ function nicerFinders(finder) {
     return finder;
 }
 
+async function betterOnce(listener, uhhh, timeframe = 5000) {
+    return new Promise((resolve) => {
+        let sent = false;
+
+        const listen = () => {
+            if (!sent) {
+                sent = true;
+                listener.off(uhhh, listen);
+                resolve(true);
+            }
+        };
+
+        setTimeout(() => {
+            if (!sent) {
+                listener.off(uhhh, listen);
+                resolve(false);
+            }
+        }, timeframe);
+
+        listener.on(uhhh, listen);
+    });
+}
+
+async function checkHypixelPing(bot) {
+    return new Promise((resolve, reject) => {
+        let sent = false;
+        bot.chat('/social pingwars');
+        const listen = (message, type) => {
+            let text = noColorCodes(message.getText(null));
+            if (type === 'chat') {
+                const pingwarsRegex = /Your Ping - ([\d,]+)ms/;
+                const match = text.match(pingwarsRegex);
+                if (match) {
+                    bot.off('message', listen);
+                    sent = true;
+                    //console.log(`found ${match[1]}ms hypixel ping`);
+                    resolve(`${match[1]}ms`);
+                }
+            }
+        };
+        setTimeout(() => {
+            bot.off('message', listen);
+            if (!sent) resolve(`Didn't get hypixel ping. Make sure you're social level 4`);
+        }, 10000);
+        bot.on('message', listen);
+    });
+}
+
+
+async function checkCoflPing(ws, handleCommand) {
+    return new Promise((resolve, reject) => {
+        handleCommand('/cofl ping');
+        let sent = false;
+        const listen = (message) => {
+            message = noColorCodes(message);
+            debug(message);
+            const pingRegex = /The time to receive flips is estimated to be ([\d.]+)ms/;
+            const match = message.match(pingRegex);
+            if (match) {
+                ws.off('messageText', listen);
+                sent = true;
+                //console.log(`found ${match[1]}ms cofl ping`);
+                resolve(`${match[1]}ms`);
+            }
+        };
+        ws.on('messageText', listen);
+        setTimeout(() => {
+            ws.off('messageText', listen);
+            if (!sent) resolve(`Didn't get cofl ping.`);
+        }, 10000);
+    });
+}
+
+
+async function checkCoflDelay(ws, handleCommand) {
+    return new Promise((resolve, reject) => {
+        handleCommand('/cofl delay');
+        let sent = false;
+        const listen = (message) => {
+            message = noColorCodes(message);
+            //error(message)
+            const pingRegex = /You are currently delayed by ([\d.]+)s on api/;
+            const match = message.match(pingRegex);
+            if (match) {
+                ws.off('messageText', listen);
+                sent = true;
+                //console.log(`found ${match[1]} delay`);
+                resolve(`${match[1]}s`);
+            }
+        };
+        ws.on('messageText', listen);
+        setTimeout(() => {
+            ws.off('messageText', listen);
+            if (!sent) resolve(`Didn't get cofl delay.`);
+        }, 10000);
+    });
+}
+
+async function TheBig3(ws, handleCommand, bot) {
+    const [delay, coflPing, hypixelPing] = await Promise.all([
+        checkCoflDelay(ws, handleCommand),
+        checkCoflPing(ws, handleCommand),
+        checkHypixelPing(bot)
+    ]);
+    return `\`\`Cofl Delay:\`\` ${delay} \n\`\`Cofl Ping:\`\` ${coflPing} \n\`\`Hypixel Ping:\`\` ${hypixelPing}`;
+}
+
+const colorCodes = [
+    "213328",
+    "213071",
+    "148820",
+    "19033",
+    "20318",
+    "21603",
+    "23144",
+    "24429",
+    "25714",
+    "27254",
+    "30079",
+    "31364",
+    "32904",
+    "34444",
+    "35728",
+    "37268",
+    "37525"
+];
+
+function randomWardenDye() {
+    return colorCodes[Math.floor(Math.random() * colorCodes.length)];
+}
+
+function normalNumber(num) {
+    if (typeof num === 'number') return num;
+    if (!num) return NaN;
+    num = num.toLowerCase();
+    if (num.includes('t')) {
+        return parseInt(num.replace('t', '')) * 1_000_000_000_000;
+    } else if (num.includes('b')) {
+        return parseInt(num.replace('b', '')) * 1_000_000_000;
+    } else if (num.includes('m')) {
+        return parseInt(num.replace('m', '')) * 1_000_000;
+    } else if (num.includes('k')) {
+        return parseInt(num.replace('k', '')) * 1_000;
+    }
+    return parseInt(num);
+}
+
 const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
-module.exports = { noColorCodes, onlyNumbers, normalizeDate, IHATETAXES, formatNumber, sleep, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders }
+module.exports = { noColorCodes, randomWardenDye, onlyNumbers, normalizeDate, normalNumber, IHATETAXES, formatNumber, sleep, checkHypixelPing, TheBig3, checkCoflDelay, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders, betterOnce, checkCoflPing }

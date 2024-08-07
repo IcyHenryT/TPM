@@ -13,7 +13,7 @@ const utils = require(`./utils.js`);
 const { randomUUID } = require('crypto');
 const axios = require('axios');
 const stateManger = require(`./state.js`);
-const { noColorCodes, nicerFinders, normalizeDate, IHATETAXES, formatNumber, sleep, getWindowName, getPurse, relistCheck, addCommasToNumber } = require('./utils.js');
+const { noColorCodes, nicerFinders, normalizeDate, TheBig3, IHATETAXES, randomWardenDye, formatNumber, sleep, getWindowName, getPurse, relistCheck, addCommasToNumber, betterOnce, normalNumber } = require('./utils.js');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
 const { getPackets, makePackets } = require('./packetStuff.js');
 const { silly, debug, error, info, logmc } = require('./logger.js');
@@ -23,7 +23,7 @@ let lastAction = Date.now();
 const { config, updateConfig } = require('./config.js');
 const nbt = require('prismarine-nbt');
 
-let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, discordbot, badFinders, waittime;
+let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, discordbot, badFinders, waittime, doNotList;
 
 function testign() {
   if (config.username.trim() === '') {
@@ -62,7 +62,7 @@ if (config.TOS.trim() === '') {
   testServer();
 }
 
-
+doNotList = config.doNotList;
 ign = config.username;
 webhook = config.webhook;
 TOS = config.TOS;
@@ -78,7 +78,9 @@ usInstance = config.usInstance;
 percentOfTarget = config.percentOfTarget;
 relist = config.relist;
 ownAuctions = config.ownAuctions;
-badFinders = config.doNotListFinders ? config.doNotListFinders : ['USER'];
+badFinders = doNotList?.finders ? doNotList?.finders : ['USER'];
+dontListProfitOver = normalNumber(doNotList?.profitOver) ? normalNumber(doNotList?.profitOver) : 50_000_000;
+dontListItems = doNotList?.itemTags ? doNotList?.itemTags : ['HYPERION'];
 
 if (webhook) {
   webhook = new Webhook(webhook);
@@ -113,11 +115,13 @@ let fullInv = false;
 let relistClaim = false;
 let uuidFound = false;
 let lastLeftBuying;
-
+let waitting;
+let boughtItems = 0, soldItems = 0;
 
 async function getReady() {
   ranit = true;
   let getReady = new Promise(async (resolve, reject) => {
+    logmc("§6[§bTPM§6] §3Staring to get slot data, this will cause the cofl websocket to take a second to be connected");
     await sleep(5000)
     bot.chat("/sbmenu")
     debug("sbmenu opened")
@@ -156,7 +160,7 @@ async function getReady() {
                     const numberOfPlayers = parseInt(matchPlayers[1], 10);
                     debug("COOP", coop, "Number of players:", numberOfPlayers);
                     totalslots = 14 + (numberOfPlayers * 3)
-                    debug("max ah slots set to", totalslots)
+                    debug("max ah slots set to ", totalslots)
                   } else {
                     // Check for single player format
                     const matchSinglePlayer = coop.match(coopRegexSinglePlayer);
@@ -164,7 +168,7 @@ async function getReady() {
                       const playerName = matchSinglePlayer[1];
                       debug("COOP with single player:", playerName);
                       totalslots = 17;
-                      debug("max ah slots set to", totalslots)
+                      debug("max ah slots set to ", totalslots)
                     } else {
                       error("Unrecognized COOP format:", coop);
                     }
@@ -172,14 +176,14 @@ async function getReady() {
                 } else {
                   // If coop does not exist
                   totalslots = 14;
-                  logmc("§6[§bTPM§6] §3Max ah slots set to", totalslots)
+                  logmc("§6[§bTPM§6] §3Max ah slots set to " + totalslots)
                   debug("No COOP information found");
                 }
                 await sleep(500)
                 debug("done with coop stuff")
                 await sleep(500)
                 bot.chat('/ah')
-                await once(bot, 'windowOpen');
+                await betterOnce(bot, 'windowOpen');
                 //console.log(bot.currentWindow.title,bot.currentWindow.slots[15].nbt.value.display.value.Name.value)
                 if ((getWindowName(bot.currentWindow)?.includes("Co-op Auction House") || getWindowName(bot.currentWindow)?.includes("Auction House")) && (bot.currentWindow.slots[15].nbt.value.display.value.Name.value?.includes("Manage Auctions")) || bot.currentWindow.slots[15].nbt.value.display.value.Name.value?.includes("Create Auction")) {
                   bot.currentWindow.slots.every(async item => {
@@ -224,11 +228,11 @@ async function getReady() {
                         await sleep(500)
                         bot.currentWindow.requiresConfirmation = false;
                         bot.clickWindow(15, 0, 0)
-                        await once(bot, 'windowOpen');
+                        await betterOnce(bot, 'windowOpen');
                         await sleep(500)
                         bot.currentWindow.requiresConfirmation = false;
                         bot.clickWindow(10, 0, 0)
-                        await once(bot, 'windowOpen');
+                        await betterOnce(bot, 'windowOpen');
                         await sleep(500)
                         bot.currentWindow.requiresConfirmation = false;
                         bot.clickWindow(31, 0, 0)
@@ -243,7 +247,7 @@ async function getReady() {
                         await sleep(500);
                         bot.currentWindow.requiresConfirmation = false;
                         bot.clickWindow(15, 0, 0);
-                        await once(bot, 'windowOpen');
+                        await betterOnce(bot, 'windowOpen');
                         await sleep(500)
 
                         const slotsToCheck = [...Array(51).keys()];
@@ -316,7 +320,7 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
   //ChatLib.chat(`Starting relist process for item with id: ${idToRelist}`)
   debug("Starting relist process for item with ahid:", idToRelist, "and target:", priceToRelist, 'bot state:', bot.state);
   bot.chat(`/viewauction ${idToRelist}`);
-  await once(bot, 'windowOpen');
+  await betterOnce(bot, 'windowOpen');
   if (getWindowName(bot.currentWindow)?.includes("BIN Auction View")) {
     await sleep(500)
     debug("BIN Auction View opened")
@@ -374,21 +378,22 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
   debug("opening /ah")
   bot.chat("/ah")
   debug("price " + priceToRelist)
-  await once(bot, 'windowOpen');
+  waitting = await betterOnce(bot, 'windowOpen');
   debug("did /ah")
-  if (!bot.currentWindow) {
+  if (!waitting || !bot.currentWindow) {
     logmc("§6[§bTPM§6] §cWas not able to open AH to sell item, trying again");
     await sleep(200);
     bot.chat("/ah")
     debug(`running /ah`)
-    await once(bot, 'windowOpen');
-    if (!bot.currentWindow) {
+    waitting = await betterOnce(bot, 'windowOpen');
+    if (!waitting || !bot.currentWindow) {
       logmc("§6[§bTPM§6] §cFailed again, aborting!!!");
       bot.state = null;
       lastAction = Date.now();
+      return;
     }
   }
-  bot.currentWindow.slots.every(async item => {
+  bot.currentWindow?.slots.every(async item => {
     if (item == null) { return }
     if (nbt.simplify(item?.nbt)?.ExtraAttributes?.uuid == itemuuid) {
       debug("found item in inventory to relist with uuid", itemuuid)
@@ -408,7 +413,7 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
     return;
   }
   uuidFound = false;
-  await once(bot, 'windowOpen');
+  await betterOnce(bot, 'windowOpen');
   if ((getWindowName(bot.currentWindow)?.includes("Create BIN Auction")) && bot.currentWindow.slots[33].nbt.value.display.value.Name.value?.includes("6 Hours")) {
     debug("Auction Duration Menu Opened")
     await sleep(200)
@@ -422,13 +427,13 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
     logmc("§6[§bTPM§6] §3Hopefully exited annoying bug safely (if not report this)");
     return;
   }
-  await once(bot, 'windowOpen');
+  await betterOnce(bot, 'windowOpen');
   if (bot.currentWindow?.title?.includes("Auction Duration")) {
     bot.currentWindow.requiresConfirmation = false;
     bot.clickWindow(14, 0, 0)
     debug("Auction Duration set to 2 days")
   }
-  await once(bot, 'windowOpen');
+  await betterOnce(bot, 'windowOpen');
   if ((getWindowName(bot.currentWindow)?.includes("Create BIN Auction")) && bot.currentWindow.slots[33].nbt.value.display.value.Name.value?.includes("2 Days")) {
     //console.log("a")
     bot.currentWindow.requiresConfirmation = false;
@@ -487,12 +492,12 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
     lastListedIds.push(idToRelist);
     lastListedTargets.push(listpriceomg);
   }
-  await once(bot, 'windowOpen');
-  if (bot.currentWindow.title.includes("Confirm BIN Auction")) {
+  await betterOnce(bot, 'windowOpen');
+  if (bot.currentWindow?.title.includes("Confirm BIN Auction")) {
     bot.currentWindow.requiresConfirmation = false;
     bot.clickWindow(11, 0, 0)
-    await once(bot, 'windowOpen');
-    if (bot.currentWindow.slots[29]?.type == 394 && (getWindowName(bot.currentWindow)?.includes("BIN Auction View"))) {
+    await betterOnce(bot, 'windowOpen');
+    if (bot.currentWindow?.slots[29]?.type == 394 && (getWindowName(bot.currentWindow)?.includes("BIN Auction View"))) {
       logmc("§6[§bTPM§6] §3Auction listed :D");
       bot.closeWindow(bot.currentWindow);
       bot.state = null;
@@ -507,8 +512,7 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
 if (!session) {
   session = randomUUID();
   config.session = session;
-  updateConfig(config)
-  sidListener(session);
+  sidListener(config);
 }
 
 // start bot
@@ -542,6 +546,7 @@ async function start() {
     host: 'play.hypixel.net',
   });
   await makePackets(bot._client);
+  updateConfig(config);
   const packets = getPackets();
   bot.once('login', () => {
     if (!uuid) {
@@ -634,7 +639,7 @@ async function start() {
         await claimSold();
         bot.state = null;
       } else if (command?.id) {
-        if(currentlisted == totalslots){
+        if (currentlisted == totalslots) {
           debug(`AH full, not listing from queue`);
           return;
         }
@@ -652,16 +657,20 @@ async function start() {
           }
         }
       } else {
-        bot.state = current.state;
-        const ahhhhh = webhookPricing[command];
-        if (ahhhhh) {//crash :(
-          var ahid = ahhhhh.id
-        } else {
-          error(`Ahhh didn't find ${command} in ${JSON.stringify(webhookPricing)}`);
+        try {
+          bot.state = current.state;
+          const ahhhhh = webhookPricing[command];
+          if (ahhhhh) {//crash :(
+            var ahid = ahhhhh.id
+          } else {
+            error(`Ahhh didn't find ${command} in ${JSON.stringify(webhookPricing)}`);
+          }
+          bedFailed = true;
+          currentOpen = ahid
+          bot.chat(`/viewauction ${ahid}`);
+        } catch (e) {
+          error(e)
         }
-        bedFailed = true;
-        currentOpen = ahid
-        bot.chat(`/viewauction ${ahid}`);
       }
       stateManger.next();
       lastAction = Date.now();
@@ -760,13 +769,13 @@ async function start() {
         break;
     }
 
-    if (/You claimed (.+?) from (?:\[.*?\] )?(.+?)'s auction!/.test(text) && config.relist) {
+    if (/You claimed (.+?) from (?:\[.*?\] )?(.+?)'s auction!/.test(text) && config.relist && text.startsWith('You')) {
       relistClaim = true;
     }
 
     const regex = /BIN Auction started for (.+?)!/;
     const match33 = text.match(regex);
-    if (match33) {
+    if (match33 && text.startsWith('BIN')) {
       const item = match33[1];
       const auctionUrl = `https://sky.coflnet.com/auction/${lastListedIds.shift()}`;
       const purse = formatNumber(await getPurse(bot));
@@ -786,7 +795,8 @@ async function start() {
 
     const regex1 = /You purchased (.+?) for ([\d,]+) coins!/;
     const match1 = text.match(regex1);
-    if (match1) {
+    if (match1 && text.startsWith('You')) {
+      boughtItems++
       let lastPurchasedAhid;
       let lastPurchasedTarget;
       let lastPurchasedFinder;
@@ -797,33 +807,52 @@ async function start() {
           lastPurchasedAhid = object.id
           lastPurchasedTarget = object.target
           lastPurchasedFinder = object.finder
+          const itemTag = object.tag
+          const profit = object.profit;
           if (!badFinders?.includes(lastPurchasedFinder)) {
-            purchasedFinders.push(lastPurchasedFinder);
-            setTimeout(async () => {
-              if (bot.state === null) {
-                //bot.state = 'listing';
-                if (fullInv) {
-                  logmc("§6[§bTPM§6] §cNot attempting to relist because your inventory is full. You will need to log in and clear your inventory to continue")
-                  bot.state = null;
-                } else {
-                  if (relistCheck(currentlisted, totalslots, bot.state)) {
-                    bot.state = "listing";
-                    await sleep(500);
-                    relistHandler(lastPurchasedAhid, lastPurchasedTarget);
+            if (!dontListItems.includes(itemTag)) {
+              if (profit < dontListProfitOver) {
+                purchasedFinders.push(lastPurchasedFinder);
+                setTimeout(async () => {
+                  if (bot.state === null) {
+                    //bot.state = 'listing';
+                    if (fullInv) {
+                      logmc("§6[§bTPM§6] §cNot attempting to relist because your inventory is full. You will need to log in and clear your inventory to continue")
+                      bot.state = null;
+                    } else {
+                      if (relistCheck(currentlisted, totalslots, bot.state)) {
+                        bot.state = "listing";
+                        await sleep(500);
+                        relistHandler(lastPurchasedAhid, lastPurchasedTarget);
+                      } else {
+                        debug(`relist check didn't work`);
+                        stateManger.add({ id: lastPurchasedAhid, targets: lastPurchasedTarget }, Infinity, 'listing');
+                        bot.state = null;
+                      }
+                    }
                   } else {
-                    debug(`relist check didn't work`);
+                    debug(`bot state check didn't work`);
                     stateManger.add({ id: lastPurchasedAhid, targets: lastPurchasedTarget }, Infinity, 'listing');
                     bot.state = null;
                   }
-                }
+                }, 10000);
               } else {
-                debug(`bot state check didn't work`);
-                stateManger.add({ id: lastPurchasedAhid, targets: lastPurchasedTarget }, Infinity, 'listing');
-                bot.state = null;
+                logmc(`§6[§bTPM§6] §c${match1[1]} is ${formatNumber(profit)} profit so it's not getting relisted. You can change this in your config file`);
               }
-            }, 10000);
+            } else {
+              if (webhook) {
+                const embed = new MessageBuilder()
+                  .setFooter(`The "Perfect" Macro`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+                  .setTitle('Item not listing')
+                  .addField('', `${match1[1]} isn't being listed because it's in your Do Not List Items in your config file`)
+                  .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
+                  .setColor(9830424);
+                webhook.send(embed);
+              }
+              logmc(`§6[§bTPM§6] §c${match1[1]} is your Do Not List, not relisting`);
+            }
           } else {
-            logmc(`§6[§bTPM§6] §cUser finder flip found, not relisting ${lastPurchasedFinder}`)
+            logmc(`§6[§bTPM§6] §c${nicerFinders(lastPurchasedFinder)} finder flip found, not relisting`)
             // specialitems(lastPurchasedAhid[lastPurchasedAhid.length - 1])
           }
         } else {
@@ -865,7 +894,8 @@ async function start() {
     }
     const regex2 = /\[Auction\] (.+?) bought (.+?) for ([\d,]+) coins CLICK/;
     const match2 = text.match(regex2);
-    if (match2) {
+    if (match2 && text.startsWith('[Auction]')) {
+      soldItems++
       const buyer = match2[1];
       const item = match2[2];
       const price = utils.onlyNumbers(match2[3]);
@@ -894,7 +924,7 @@ async function start() {
     }
   });
   function askUser() {
-    rl.question('> ', input => {
+    rl.question('> ', async input => {
       const args = input.trim().split(/\s+/);
       switch (args[0]) {
         case 'chat':
@@ -904,7 +934,20 @@ async function start() {
         case '/cofl':
         case "/tpm":
         case '/icymacro':
-          handleCommand(input);
+          if (args[1]?.toLowerCase() == 'getping') {
+            const bigThree = await TheBig3(ws, handleCommand, bot);
+            if (webhook) {
+              const embed = new MessageBuilder()
+                .setFooter(`TPM - Bought ${boughtItems} - Sold ${soldItems}`, `https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437`)
+                .setTitle('Ping!')
+                .addField('', bigThree)
+                .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
+                .setColor(randomWardenDye());
+              webhook.send(embed);
+            }
+          } else {
+            handleCommand(input);
+          }
           break;
         case '!c':
           solveCaptcha(args[1]);
@@ -1003,7 +1046,9 @@ async function start() {
         relistObject[noColorCodes(itemName).replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "")] = {
           id: auctionID,
           target: target,
-          finder: data.finder
+          finder: data.finder,
+          profit: IHATETAXES(target) - data.startingBid,
+          tag: 'a'
         };
       } else {
         auctionID = data.id;
@@ -1054,6 +1099,7 @@ async function start() {
         bedFaiiled = false;
         closedGui = false;
         itemName = data.auction.itemName;
+        var weirdName = noColorCodes(itemName).replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "");
         //console.log(`Opening ${itemName} at ${Date.now()}`);
         logmc(`§6[§bTPM§6] §8Opening ${itemName}`);
         lastAction = currentTime;
@@ -1064,33 +1110,43 @@ async function start() {
         lastOpenedAhids.push(auctionID);
         lastOpenedFinders.length = 0;
         lastOpenedFinders.push(finder);
-        relistObject[noColorCodes(itemName).replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "")] = {
+        relistObject[weirdName] = {
           id: auctionID,
           target: target,
-          finder: finder
+          finder: finder,
+          tag: data.auction.tag,
+          profit: IHATETAXES(data.target) - data.auction.startingBid
         };
+        const profit = utils.IHATETAXES(webhookPricing[item].target) - utils.onlyNumbers(price);
       } else {
         auctionID = data.id;
         itemName = data.auction.itemName;
+        var weirdName = noColorCodes(itemName).replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "");
         if (bot.state !== 'moving') {
           logmc(`§3Adding ${itemName}§3 to the pipeline because state is ${bot.state}!`);
-          stateManger.add(noColorCodes(itemName).replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, ""), 69, 'buying');
+          stateManger.add(weirdName, 69, 'buying');
         }
       }
       idQueue.push(data.id);
       targetQueue.push(data.target);
       finderQueue.push(data.finder);
       const ending = new Date(normalizeDate(data.auction.start)).getTime() + 20000;
-      webhookPricing[noColorCodes(itemName).replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "")] = {
+      webhookPricing[weirdName] = {
         target: data.target,
         price: data.auction.startingBid,
         auctionId: auctionID,
         bed: bed,
         finder: data.finder,
+        tag: data.auction.tag,
+        profit: IHATETAXES(data.target) - data.auction.startingBid
       };
       if (currentTime < ending) {
         bed = '[BED]';
-        webhookPricing[noColorCodes(itemName).replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "")].bed = bed;
+        if (webhookPricing[weirdName]?.bed) {
+          webhookPricing[weirdName].bed = bed;
+        } else {
+          error(`Super weird, didn't find the item in webhookpricing but like it should've been made idk`);
+        }
         //console.log(`bed found, waiting ${ending - Date.now() - waittime} ending: ${ending}`);
         setTimeout(async () => {
           for (i = 0; i < 5; i++) {
@@ -1140,7 +1196,7 @@ async function start() {
           JSON.stringify({
             type: 'uploadScoreboard',
             data: JSON.stringify(bot.scoreboard.sidebar.items.map(item => item.displayName.getText(null).replace(item.name, '')))
-          })
+          }), false
         );
       }
     }, 5500);
@@ -1170,7 +1226,7 @@ async function start() {
       JSON.stringify({
         type: 'uploadInventory',
         data: JSON.stringify(bot.inventory),
-      })
+      }), false
     );
   };
   ws.on('getInventory', sendInventoy);

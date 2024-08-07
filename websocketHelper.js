@@ -3,7 +3,7 @@ const { logmc, debug, error } = require("./logger.js");
 const { sleep, formatNumber, noColorCodes } = require("./utils.js");
 const axios = require('axios');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
-let {config} = require('./config.js');
+let { config, updateConfig } = require('./config.js');
 let webhook;
 let id = config.discordID;
 const ws = new EventEmitter();
@@ -38,11 +38,14 @@ async function startWS(sid) {
                 .setColor(16760576);
             webhook.send(embed);
         }
+        setTimeout(() => {
+            handleCommand('/cofl flip false');
+            setTimeout(() => {
+                handleCommand('/cofl flip true');
+            }, 3000)
+        }, 3000)
         connected = true;
         ws.emit('open', '')
-        setTimeout(() => {
-            handleCommand('/cofl flip always');
-        }, 7500)
     });
 
     websocket.on('message', (message) => {
@@ -56,7 +59,7 @@ async function startWS(sid) {
         connected = false;
         logmc('§cDisconnected from WebSocket server');
         await sleep(5000);
-        if(!connected) startWS(sid);
+        if (!connected) startWS(sid);
     });
 
     websocket.on('error', (err) => {
@@ -109,10 +112,10 @@ function parseMessage(message) {
                 handleCommand(execData)
             }
             break;
+        case "loggedIn":
         case "playSound":
         case "ping":
         case "countdown":
-        case "loggedIn":
         case "createAuction":
             break;
         case "getInventory":
@@ -120,15 +123,18 @@ function parseMessage(message) {
             break;
         case "privacySettings":
             ws.emit('settings', msg);
+            /*setTimeout(() => {
+                handleCommand('/cofl flip always');
+            }, 7500)*/
             break;
         default:
             return `Message ${JSON.stringify(msg)}`;
     }
     return;
 }
-function send(msg) {
+function send(msg, type = true) {
     if (!websocket || !connected) {
-        logmc(`§6[§bTPM§6] §cCan't send to websocket because not connected`);
+        if (type) logmc(`§6[§bTPM§6] §cCan't send to websocket because not connected`);
         return;
     }
     websocket.send(msg)
@@ -145,8 +151,10 @@ function handleCommand(command) {
         })
     )
 }
-function sidListener() {
+function sidListener(newConfig) {
+    console.log(`Sid listener go go go`);
     const onMessage = (message) => {
+        //console.log(JSON.stringify(message));
         if (!message.data) return;
         const data = JSON.parse(message.data);
         if (sidStep === 1) {
@@ -155,14 +163,30 @@ function sidListener() {
             if (important.includes('Please click this [LINK]')) {
                 logmc(`§6[§bTPM§6] §9Use ${data[1].onClick} to log in!`);
                 sidStep++;
+                ws.on('settings', loggedIn)
                 ws.off('message', onMessage)
+                handleCommand('/cofl flip false');
+            } else if (important.includes('Please click') && important.includes('to login')) {
+                sidStep++;
+                ws.on('settings', loggedIn);
+                ws.off('message', onMessage);
+                handleCommand('/cofl flip false');
             }
         }
     };
+    const loggedIn = () => {
+        //console.log(`Logged in found`);
+        if (sidStep === 2) {
+            updateConfig(newConfig)
+            ws.off('settings', loggedIn);
+            handleCommand(`/cofl flip always`)
+        }
+    }
     ws.on('message', onMessage);
 }
 function checkCaptcha(thingy) {
     const parse = JSON.parse(thingy);
+    if (parse.type !== 'writeToChat') return false;
     parse.data = JSON.parse(parse.data);
     const prettyJsonString = JSON.stringify(parse, null, 2);
     if (prettyJsonString.indexOf('/cofl captcha') !== -1 && !prettyJsonString.includes('You are currently delayed for likely being afk.')) {
