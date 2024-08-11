@@ -65,7 +65,9 @@ const defaultConfig = `{
       "HYPERION"
     ]
 
-  }
+  },
+  //Doesn't send your flips to /get_global_stats. Come on man I made a free macro and you can't even give me some data :( it's nothing like private
+  "keepEverythingPrivate": false
 
 }`;
 

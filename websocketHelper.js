@@ -31,7 +31,7 @@ async function startWS(sid) {
         logmc('§aConnected to WebSocket server');
         if (webhook) {
             const embed = new MessageBuilder()
-                .setFooter(`The "Perfect" Macro - BETA 1.1.5`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+                .setFooter(`The "Perfect" Macro - v1.1.5`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
                 .setTitle('Started flipping')
                 .addField('', `Logged in as \`${config.username}\``)
                 .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
@@ -119,13 +119,16 @@ function parseMessage(message) {
         case "countdown":
         case "createAuction":
             break;
+        case "settings":
+            ws.emit('jsonSettings', msg)
+            break;
         case "getInventory":
             ws.emit('getInventory', msg);
             break;
         case "privacySettings":
             ws.emit('settings', msg);
             handleCommand(`/cofl flip always`)
-            //handleCommand('/cofl get json');
+            handleCommand('/cofl get json');
             /*setTimeout(() => {
                 handleCommand('/cofl flip always');
             }, 7500)*/
@@ -262,20 +265,20 @@ function checkCaptchaSolution(message) {
         const data = JSON.parse(msg.data);
         if (data.text.includes('Thanks for confirming that you are a real user')) {
             const embed = new MessageBuilder()
-            .setFooter(`The "Perfect" Macro - BETA 1.1.5`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
-            .setTitle('Solved the captcha')
-            .addField('', `Lmao they thought you were real`)
-            .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
-            .setColor(5294200);
-        webhook.send(embed);
+                .setFooter(`The "Perfect" Macro - BETA 1.1.5`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+                .setTitle('Solved the captcha')
+                .addField('', `Lmao they thought you were real`)
+                .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
+                .setColor(5294200);
+            webhook.send(embed);
         } else if (data.text.includes("solved the captcha, but")) {
             const embed = new MessageBuilder()
-            .setFooter(`The "Perfect" Macro - BETA 1.1.5`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
-            .setTitle('Solved the captcha')
-            .addField('', `Sadly there are more captchas`)
-            .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
-            .setColor(15335387);
-        webhook.send(embed);
+                .setFooter(`The "Perfect" Macro - BETA 1.1.5`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+                .setTitle('Solved the captcha')
+                .addField('', `Sadly there are more captchas`)
+                .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
+                .setColor(15335387);
+            webhook.send(embed);
         }
     }
 }

@@ -78,8 +78,11 @@ function testWebhook(ranAlready = false) {
     testWebhook(true);
     console.log(userInput);
     return;
+  } else if(userInput.includes('none')){
+    config.webhook = false;
+  } else {
+    config.webhook = userInput;
   }
-  config.webhook = userInput;
   updateConfig(config)
 }
 
@@ -708,11 +711,14 @@ async function start() {
         try {
           bot.state = current.state;
           const ahhhhh = webhookPricing[command];
+          debug(ahhhhh);
           if (ahhhhh) {//crash :(
             const ahid = ahhhhh.id
             bedFailed = true;
+            debug('Bed is now failed')
             currentOpen = ahid
             bot.chat(`/viewauction ${ahid}`);
+            toRun = `/viewauction ${ahid}`
           } else {
             error(`Ahhh didn't find ${command} in ${JSON.stringify(webhookPricing)} leaving queue and not changing state`);
             stateManger.next();
@@ -826,6 +832,7 @@ async function start() {
     const regex = /BIN Auction started for (.+?)!/;
     const match33 = text.match(regex);
     if (match33 && text.startsWith('BIN')) {
+      bot.state = null;
       const item = match33[1];
       const auctionUrl = `https://sky.coflnet.com/auction/${lastListedIds.shift()}`;
       const purse = formatNumber(await getPurse(bot));
@@ -929,7 +936,7 @@ async function start() {
           .setColor(2615974);
         webhook.send(embed);
       }
-      sendFlip(webhookPricing[item].auctionId, profit, price, itemBed, utils.noColorCodes(match1[1]))
+      sendFlip(webhookPricing[item].auctionId, profit, price, itemBed, utils.noColorCodes(match1[1]), webhookPricing[item].finder)
       sendScoreboard();
       if (!config.relist) {
         setTimeout(async () => {
@@ -1079,6 +1086,7 @@ async function start() {
         logmc(`§6[§bTPM§6] §8Opening ${itemName}`);
         closedGui = false;
         bedFailed = false;
+        debug('Bed no longer failed')
         currentOpen = data.id;
         lastOpenedTargets.length = 0;
         lastOpenedTargets.push(target);
@@ -1143,7 +1151,8 @@ async function start() {
         packets.sendMessage(`/viewauction ${auctionID}`);
         let target = data.target;
         let finder = data.finder;
-        bedFaiiled = false;
+        bedFailed = false;
+        debug(`Bed no longer failed`);
         closedGui = false;
         itemName = data.auction.itemName;
         var weirdName = noColorCodes(itemName).replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "");

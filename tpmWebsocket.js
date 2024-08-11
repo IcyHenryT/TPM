@@ -12,6 +12,8 @@ let reconnecting = false;
 const uuid = config.uuid;
 const discordID = config.discordID;
 const ign = config.username;
+const private = config.keepEverythingPrivate
+let settings = null;
 
 function makeTpmWebsocket() {
     try {
@@ -27,14 +29,20 @@ function makeTpmWebsocket() {
             logmc('§6[§bTPM§6] §3Connected to the TPM websocket!');
             sentWsMessage = false;
             setTimeout(() => {
+                if(!settings && !private) {
+                    getSettings();
+                }
                 tws.send(JSON.stringify({
                     type: "loggedIn",
                     data: JSON.stringify({
                         discordID: discordID,
-                        webhook: config.webhook
+                        webhook: config.webhook,
+                        private: private,
+                        userName: config.username,
+                        settings: settings
                     })
                 }));
-            }, 5000);
+            }, 500);
         });
 
         tws.on('message', (message) => {
@@ -89,7 +97,7 @@ function makeTpmWebsocket() {
 
 makeTpmWebsocket();
 
-function sendFlip(auctionId, profit, price, bed, name) {
+function sendFlip(auctionId, profit, price, bed, name, finder) {
     bought++;
     if (tws && tws.readyState === WebSocket.OPEN) {
         tws.send(JSON.stringify({
@@ -101,11 +109,31 @@ function sendFlip(auctionId, profit, price, bed, name) {
                 price: price,
                 profit: profit,
                 uuid: uuid,
-                auctionId: auctionId
+                auctionId: auctionId,
+                finder: finder
             })
         }));
     }
 }
+
+function getSettings(){
+    if(private) return;
+    const gettingSettings = (msg) =>{
+        settings = msg;
+        if (tws && tws.readyState === WebSocket.OPEN) {
+            tws.send(JSON.stringify({
+                type: "settings",
+                data: JSON.stringify({
+                    settings: settings
+                })
+            }));
+        }
+        ws.off('jsonSettings', gettingSettings);
+    }
+    ws.on('jsonSettings', gettingSettings);
+}
+
+getSettings()
 
 function updateSold() {
     sold++;
