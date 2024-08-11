@@ -5,7 +5,7 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
-const { once } = require('events');
+//const { once } = require('events');
 const registry = require('prismarine-registry')('1.8.9');
 const ChatMessage = require('prismarine-chat')(registry);
 const { check, Window } = require('./window.js');
@@ -13,7 +13,7 @@ const utils = require(`./utils.js`);
 const { randomUUID } = require('crypto');
 const axios = require('axios');
 const stateManger = require(`./state.js`);
-const { noColorCodes, nicerFinders, normalizeDate, TheBig3, IHATETAXES, randomWardenDye, formatNumber, sleep, getWindowName, getPurse, relistCheck, addCommasToNumber, betterOnce, normalNumber } = require('./utils.js');
+const { noColorCodes, nicerFinders, normalizeDate, TheBig3, IHATETAXES, randomWardenDye, formatNumber, sleep, getWindowName, getPurse, relistCheck, addCommasToNumber, betterOnce, normalNumber, sendPingStats } = require('./utils.js');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
 const { getPackets, makePackets } = require('./packetStuff.js');
 const { silly, debug, error, info, logmc } = require('./logger.js');
@@ -22,8 +22,9 @@ const { startWS, send, handleCommand, ws, sidListener, solveCaptcha } = require(
 let lastAction = Date.now();
 const { config, updateConfig } = require('./config.js');
 const nbt = require('prismarine-nbt');
+const {sendFlip, giveTheFunStuff, updateSold} = require('./tpmWebsocket.js');
 
-let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, discordbot, badFinders, waittime, doNotList;
+let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList;
 
 function testign() {
   if (config.username.trim() === '') {
@@ -31,6 +32,7 @@ function testign() {
     if (ign) {
       config.username = ign;
       updateConfig(config)
+      testDiscordIgn()
     } else {
       logmc(`§cSo close! You need to have an actual ign`);
       testign();
@@ -55,6 +57,32 @@ function testServer() {
   testign();
 }
 
+function testDiscordIgn(){
+  const userInput = prompt('What is your Discord ID (use TPM bot to find out): ');
+  if (!userInput || isNaN(parseInt(userInput))) {
+    logmc(`§cThat is not a valid discord ID`);
+    testDiscordIgn();
+    console.log(userInput);
+    return;
+  }
+  config.discordID = userInput;
+  testWebhook()
+  updateConfig(config)
+}
+
+function testWebhook(ranAlready = false) {
+  const promptMessage = ranAlready ? 'What is your Discord Webhook (If you don\'t want one then type none but you can\'t use backend):' : 'What is your Discord Webhook: '
+  const userInput = prompt(promptMessage);
+  if ((!userInput || !userInput?.includes('https')) && !userInput?.includes('none')) {
+    logmc(`§cThat is not a valid discord webhook`);
+    testWebhook(true);
+    console.log(userInput);
+    return;
+  }
+  config.webhook = userInput;
+  updateConfig(config)
+}
+
 if (config.TOS.trim() === '') {
   prompt("BY CLICKING ENTER YOU AGREE THAT IT'S NOT ICYHENRYT'S FAULT IF YOU'RE BANNED BECAUSE IT'S IN BETA");
   config.TOS = 'Accepted';
@@ -69,7 +97,7 @@ TOS = config.TOS;
 session = config.session;
 bedSpam = config.bedSpam;
 discordid = config.discordID;
-discordbot = config.discordBotToken;
+//discordbot = config.discordBotToken;
 delay = config.delay;
 clickDelay = config.clickDelay;
 waittime = config.waittime;
@@ -561,6 +589,7 @@ async function start() {
     host: 'play.hypixel.net',
   });
   await makePackets(bot._client);
+  giveTheFunStuff(bot, handleCommand);
   const packets = getPackets();
   bot.once('login', () => {
     if (!uuid) {
@@ -900,6 +929,7 @@ async function start() {
           .setColor(2615974);
         webhook.send(embed);
       }
+      sendFlip(webhookPricing[item].auctionId, profit, price, itemBed, utils.noColorCodes(match1[1]))
       sendScoreboard();
       if (!config.relist) {
         setTimeout(async () => {
@@ -917,6 +947,7 @@ async function start() {
     const match2 = text.match(regex2);
     if (match2 && text.startsWith('[Auction]')) {
       soldItems++
+      updateSold()
       const buyer = match2[1];
       const item = match2[2];
       const price = utils.onlyNumbers(match2[3]);
@@ -956,16 +987,7 @@ async function start() {
         case "/tpm":
         case '/icymacro':
           if (args[1]?.toLowerCase() == 'getping') {
-            const bigThree = await TheBig3(ws, handleCommand, bot);
-            if (webhook) {
-              const embed = new MessageBuilder()
-                .setFooter(`TPM - Bought ${boughtItems} - Sold ${soldItems}`, `https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437`)
-                .setTitle('Ping!')
-                .addField('', bigThree)
-                .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
-                .setColor(randomWardenDye());
-              webhook.send(embed);
-            }
+            sendPingStats(ws, handleCommand, bot, soldItems, boughtItems);
           } else {
             handleCommand(input);
           }
@@ -1075,7 +1097,7 @@ async function start() {
         auctionID = data.id;
         itemName = data.itemName.replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "");
         logmc(`§6[§bTPM§6] §aAdding ${itemName}§3 to the pipeline because state is ${bot.state}!`);
-        stateManger.add(noColorCodes(itemName).replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, ""), 69, 'buying');
+        stateManger.add(noColorCodes(itemName), 69, 'buying');
       }
       idQueue.push(data.id);
       targetQueue.push(data.target);
@@ -1090,7 +1112,11 @@ async function start() {
       };
       if (currentTime < ending) {
         bed = '[BED]';
-        webhookPricing[noColorCodes(itemName).replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "")].bed = bed;
+        if (webhookPricing[noColorCodes(itemName)]?.bed) {
+          webhookPricing[noColorCodes(itemName)].bed = bed;
+        } else {
+          error(`Super weird, didn't find the item in webhookpricing but like it should've been made idk`);
+        }
         //console.log(`bed found, waiting ${ending - Date.now() - waittime} ending: ${ending}`);
         setTimeout(async () => {
           for (i = 0; i < 4; i++) {

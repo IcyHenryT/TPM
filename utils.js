@@ -1,8 +1,19 @@
 const fs = require('fs');
 const path = require('path');
 const { debug } = require('./logger.js');
+const { Webhook, MessageBuilder } = require('discord-webhook-node');
+const { config } = require('./config.js');
+
+
+let webhook = config.webhook;
+if (webhook) {
+    webhook = new Webhook(webhook);
+    webhook.setUsername('TPM');
+    webhook.setAvatar('https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless');
+}
+
 function noColorCodes(text) {
-    return text.replace(/§./g, '')
+    return text.replace(/§./g, '').replace('§', '')//cofl sometimes sends messages that are cut off so I need the second one aswell
 }
 function onlyNumbers(text) {
     return parseInt(text.replace(/,/g, ''))
@@ -306,5 +317,18 @@ function normalNumber(num) {
     return parseInt(num);
 }
 
+async function sendPingStats(ws, handleCommand, bot, sold, bought) {
+    const bigThree = await TheBig3(ws, handleCommand, bot);
+    if (webhook) {
+        const embed = new MessageBuilder()
+            .setFooter(`TPM - Bought ${bought} - Sold ${sold}`, `https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437`)
+            .setTitle('Ping!')
+            .addField('', bigThree)
+            .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
+            .setColor(randomWardenDye());
+        webhook.send(embed);
+    }
+}
+
 const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
-module.exports = { noColorCodes, randomWardenDye, onlyNumbers, normalizeDate, normalNumber, IHATETAXES, formatNumber, sleep, checkHypixelPing, TheBig3, checkCoflDelay, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders, betterOnce, checkCoflPing }
+module.exports = { noColorCodes, randomWardenDye, sendPingStats, onlyNumbers, normalizeDate, normalNumber, IHATETAXES, formatNumber, sleep, checkHypixelPing, TheBig3, checkCoflDelay, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders, betterOnce, checkCoflPing }

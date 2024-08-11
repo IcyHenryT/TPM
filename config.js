@@ -27,10 +27,7 @@ const defaultConfig = `{
   //Delay between opening flips
   "delay": 250,
 
-  //Currently doesn't do anything
-  "dicordBotToken": "",
-
-  //Pings on captcha
+  //Pings on captcha and required for backend
   "discordID": "",
 
   // don't touch everything below
@@ -63,7 +60,7 @@ const defaultConfig = `{
     //Don't list if profit is over x
     "profitOver": "50m",
 
-    //Don't list certain item tags (Doesn't work on BAF websocket)
+    //Don't list certain item tags
     "itemTags": [
       "HYPERION"
     ]
