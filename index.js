@@ -22,7 +22,7 @@ const { startWS, send, handleCommand, ws, sidListener, solveCaptcha } = require(
 let lastAction = Date.now();
 const { config, updateConfig } = require('./config.js');
 const nbt = require('prismarine-nbt');
-const {sendFlip, giveTheFunStuff, updateSold} = require('./tpmWebsocket.js');
+const { sendFlip, giveTheFunStuff, updateSold } = require('./tpmWebsocket.js');
 
 let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList;
 
@@ -57,7 +57,7 @@ function testServer() {
   testign();
 }
 
-function testDiscordIgn(){
+function testDiscordIgn() {
   const userInput = prompt('What is your Discord ID (use TPM bot to find out): ');
   if (!userInput || isNaN(parseInt(userInput))) {
     logmc(`§cThat is not a valid discord ID`);
@@ -78,7 +78,7 @@ function testWebhook(ranAlready = false) {
     testWebhook(true);
     console.log(userInput);
     return;
-  } else if(userInput.includes('none')){
+  } else if (userInput.includes('none')) {
     config.webhook = false;
   } else {
     config.webhook = userInput;
@@ -696,7 +696,7 @@ async function start() {
         if (fullInv) {
           logmc("§6[§bTPM§6] §cNot attempting to relist because your inventory is full. You will need to log in and clear your inventory to continue")
           bot.state = null;
-        } else if(Date.now() - lastRelistCheck > 10000) {
+        } else if (Date.now() - lastRelistCheck > 10000) {
           lastRelistCheck = Date.now()
           await sleep(10000)
           if (relistCheck(currentlisted, totalslots, bot.state)) {
@@ -827,7 +827,9 @@ async function start() {
 
     if (/You claimed (.+?) from (?:\[.*?\] )?(.+?)'s auction!/.test(text) && config.relist && text.startsWith('You')) {
       relistClaim = true;
+      if(bot.state === 'claiming') bot.state = null;
     }
+
 
     const regex = /BIN Auction started for (.+?)!/;
     const match33 = text.match(regex);
@@ -853,6 +855,7 @@ async function start() {
     const regex1 = /You purchased (.+?) for ([\d,]+) coins!/;
     const match1 = text.match(regex1);
     if (match1 && text.startsWith('You')) {
+      if (bot.state == 'buying') bot.state = null;
       boughtItems++
       let lastPurchasedAhid;
       let lastPurchasedTarget;
@@ -916,7 +919,6 @@ async function start() {
           error(`Didn't find ${item} in ${JSON.stringify(relistObject)} Please report this to icyhenryt`);
         }
       }
-      if (bot.state == 'buying') bot.state = null;
       const price = match1[2];
       if (!webhookPricing[item]) {
         error(`Didn't find ${item} in ${JSON.stringify(webhookPricing)} Please report this to icyhenryt`);
