@@ -4,6 +4,7 @@ function getPackets() {
         return bot;
     } else {
         console.error(`Thug shake!! Packets don't exist yet`);
+        return;
     }
 }
 async function makePackets(client) {

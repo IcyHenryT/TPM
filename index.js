@@ -713,7 +713,7 @@ async function start() {
           const ahhhhh = webhookPricing[command];
           debug(ahhhhh);
           if (ahhhhh) {//crash :(
-            const ahid = ahhhhh.id
+            const ahid = ahhhhh.auctionId
             bedFailed = true;
             debug('Bed is now failed')
             currentOpen = ahid

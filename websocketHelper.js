@@ -4,6 +4,7 @@ const { sleep, formatNumber, noColorCodes } = require("./utils.js");
 const axios = require('axios');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
 let { config, updateConfig } = require('./config.js');
+const { getPackets } =  require('./packetStuff.js');
 let webhook;
 let id = config.discordID;
 const ws = new EventEmitter();
@@ -31,7 +32,7 @@ async function startWS(sid) {
         logmc('§aConnected to WebSocket server');
         if (webhook) {
             const embed = new MessageBuilder()
-                .setFooter(`The "Perfect" Macro - v1.1.5`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+                .setFooter(`The "Perfect" Macro - v1.1.7`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
                 .setTitle('Started flipping')
                 .addField('', `Logged in as \`${config.username}\``)
                 .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
@@ -109,8 +110,12 @@ function parseMessage(message) {
                 dataParts.shift();
                 dataParts = '"' + dataParts.join(' ') + '"';
                 send(JSON.stringify({ type: 'ping', data: dataParts }));
-            } else {
+            } else if (execData.includes('/cofl')) {
                 handleCommand(execData)
+            } else {
+                const packets = getPackets();
+                if(!packets) return;
+                packets.sendMessage(execData);
             }
             break;
         case "loggedIn":
