@@ -9,7 +9,7 @@ const defaultConfig = `{
   // Put your discord webhook here.
   "webhook": "",
   
-  //True or false
+  //true or false
   "bedSpam": false,
 
   //The time before bed timings clicks 
@@ -30,13 +30,10 @@ const defaultConfig = `{
   //Pings on captcha and required for backend
   "discordID": "",
 
-  // don't touch everything below
-  "session": "",
-
-  // terms of service
+  // terms of service - auto fills
   "TOS": "",
 
-  //Account UUID
+  //Account UUID - auto fills
   "uuid" : "",
 
   //Set up different list price ranges and their corresponding percent off of target price. (The lower value of the range is inclusive, the higher value is exclusive)
@@ -68,6 +65,9 @@ const defaultConfig = `{
   },
   //Doesn't send your flips to /get_global_stats. Come on man I made a free macro and you can't even give me some data :( it's nothing like private
   "keepEverythingPrivate": false
+
+  // DON'T SHARE THIS IT'S YOUR COFL ACCOUNT PASSWORD. If you can't see the cofl link set this to "session": "",
+  "session": "",
 
 }`;
 

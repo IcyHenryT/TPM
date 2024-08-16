@@ -112,6 +112,8 @@ ownAuctions = config.ownAuctions;
 badFinders = doNotList?.finders ? doNotList?.finders : ['USER'];
 dontListProfitOver = normalNumber(doNotList?.profitOver) ? normalNumber(doNotList?.profitOver) : 50_000_000;
 dontListItems = doNotList?.itemTags ? doNotList?.itemTags : ['HYPERION'];
+let ping = "";
+if (discordid) ping = `<@${discordid}>`;
 
 if (webhook) {
   webhook = new Webhook(webhook);
@@ -466,12 +468,56 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
     bot.currentWindow.requiresConfirmation = false;
     bot.clickWindow(33, 0, 0)
   } else if (!getWindowName(bot.currentWindow)?.includes('Create BIN Auction')) {
-    logmc("§6[§bTPM§6] §cItem probably already in slot, please remove it :) Aborting relist process for this item ):")
-    if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
-    await sleep(250)
-    bot.state = null;
-    logmc("§6[§bTPM§6] §3Hopefully exited annoying bug safely (if not report this)");
-    return;
+    logmc("§6[§bTPM§6] §cItem probably already in slot, attempting to remove it");
+    await sleep(200)
+    bot.currentWindow.requiresConfirmation = false;
+    bot.clickWindow(15, 0, 0)
+    await betterOnce(bot, 'windowOpen');
+    if (getWindowName(bot.currentWindow)?.includes('Manage Auctions')) {
+      let createSlot = bot.currentWindow.slots.find(obj => obj?.nbt?.value?.display?.value?.Name?.value?.includes('Create Auction'));
+      debug(`Found create slot ${createSlot}`);
+      if (!createSlot) {
+        logmc("§6[§bTPM§6] §cFailed to find create slot :( leaving relist and there's an item in the slot");
+        if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+        await sleep(250)
+        bot.state = null;
+        return;
+      } else {
+        bot.currentWindow.requiresConfirmation = false;
+        bot.clickWindow(createSlot, 0, 0)
+        await betterOnce(bot, 'windowOpen');
+        await sleep(250);
+        if (getWindowName(bot.currentWindow)?.includes('Create BIN Auction')) {
+          bot.currentWindow.requiresConfirmation = false;
+          bot.clickWindow(13, 0, 0)
+          await sleep(250)
+          bot.state = null;
+          if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+          logmc("§6[§bTPM§6] §cRemoved item from slot")
+          return;
+        } else {
+          logmc(`§6[§bTPM§6] §cFailed to open BIN Auction got ${getWindowName(bot.currentWindow)}. Leaving relist and there's an item in the slot btw`);
+          if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+          await sleep(250)
+          bot.state = null;
+          return;
+        }
+      }
+    } else if (getWindowName(bot.currentWindow)?.includes('Create BIN Auction')) {
+      bot.currentWindow.requiresConfirmation = false;
+      bot.clickWindow(13, 0, 0)
+      await sleep(250)
+      bot.state = null;
+      if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+      logmc("§6[§bTPM§6] §cRemoved item from slot")
+      return;
+    } else {
+      logmc(`§6[§bTPM§6] §cFailed to open Manage auctions got ${getWindowName(bot.currentWindow)}. Leaving relist and there's an item in the slot btw`);
+      if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+      await sleep(250)
+      bot.state = null;
+      return;
+    }
   }
   await betterOnce(bot, 'windowOpen');
   if (bot.currentWindow?.title?.includes("Auction Duration")) {
@@ -537,18 +583,23 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
     debug("bid confirmed, finalizing auction listing")
     lastListedIds.push(idToRelist);
     lastListedTargets.push(listpriceomg);
+  } else {
+    logmc('§6[§bTPM§6] Failed to list an item.');
+    if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+    bot.state = null;
+    return;
   }
   await betterOnce(bot, 'windowOpen');
   if (bot.currentWindow?.title.includes("Confirm BIN Auction")) {
     bot.currentWindow.requiresConfirmation = false;
     bot.clickWindow(11, 0, 0)
+    currentlisted++;
     await betterOnce(bot, 'windowOpen');
     if (bot.currentWindow?.slots[29]?.type == 394 && (getWindowName(bot.currentWindow)?.includes("BIN Auction View"))) {
       logmc("§6[§bTPM§6] §3Auction listed :D");
       bot.closeWindow(bot.currentWindow);
       bot.state = null;
       lastAction = Date.now();
-      currentlisted++;
       debug(`Current listed: ${currentlisted}`);
     }
   }
@@ -711,7 +762,7 @@ async function start() {
         try {
           bot.state = current.state;
           const ahhhhh = webhookPricing[command];
-          debug(ahhhhh);
+          debug(JSON.stringify(ahhhhh));
           if (ahhhhh) {//crash :(
             const ahid = ahhhhh.auctionId
             bedFailed = true;
@@ -827,7 +878,7 @@ async function start() {
 
     if (/You claimed (.+?) from (?:\[.*?\] )?(.+?)'s auction!/.test(text) && config.relist && text.startsWith('You')) {
       relistClaim = true;
-      if(bot.state === 'claiming') bot.state = null;
+      if (bot.state === 'claiming') bot.state = null;
     }
 
 
@@ -930,13 +981,49 @@ async function start() {
       //console.log("purse test", await getPurse(bot), "price", price);
       const purse = utils.formatNumber(await getPurse(bot) - parseInt(String(price).replace(/,/g, ''), 10));
       if (webhook) {
-        const embed = new MessageBuilder()
-          .setFooter(`TPM - Found by ${nicerFinders(webhookPricing[item].finder)} - Purse: ${purse} `, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
-          .setTitle('Item purchased')
-          .addField('', `Bought \`${utils.noColorCodes(match1[1])}\` for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) [click](${auctionUrl}) ${itemBed}`)
-          .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
-          .setColor(2615974);
-        webhook.send(embed);
+        if (profit < 100_000_000) {
+          const embed = new MessageBuilder()
+            .setFooter(`TPM - Found by ${nicerFinders(webhookPricing[item].finder)} - Purse: ${purse} `, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+            .setTitle('Item purchased')
+            .addField('', `Bought \`${utils.noColorCodes(match1[1])}\` for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) [click](${auctionUrl}) ${itemBed}`)
+            .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
+            .setColor(2615974);
+          webhook.send({ content: 'hi', embeds: [embed] });
+        } else {
+          try {
+            await axios.post(config.webhook, {
+              username: "TPM",
+              avatar_url: "https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless",
+              content: ping,
+              embeds: [{
+                title: 'LEGENDARY FLIP WOOOOO!!!',
+                color: 16629250,
+                fields: [
+                  {
+                    name: '',
+                    value: `Bought \`${utils.noColorCodes(match1[1])}\` for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) [click](${auctionUrl}) ${itemBed}`,
+                  }
+                ],
+                thumbnail: {
+                  url: `https://mc-heads.net/head/${config.uuid}.png`,
+                },
+                footer: {
+                  text: `TPM - Found by ${nicerFinders(webhookPricing[item].finder)} - Purse: ${purse}`,
+                  icon_url: 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437',
+                }
+              }]
+            })
+          } catch (e) {
+            console.error(`Couldn't post axios `, e);
+            const embed = new MessageBuilder()
+              .setFooter(`TPM - Found by ${nicerFinders(webhookPricing[item].finder)} - Purse: ${purse} `, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+              .setTitle('LEGENDARY FLIP WOOOOO!!!')
+              .addField('', `Bought \`${utils.noColorCodes(match1[1])}\` for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) [click](${auctionUrl}) ${itemBed}`)
+              .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
+              .setColor(16629250);
+            webhook.send({ content: 'hi', embeds: [embed] });
+          }
+        }
       }
       sendFlip(webhookPricing[item].auctionId, profit, price, itemBed, utils.noColorCodes(match1[1]), webhookPricing[item].finder)
       sendScoreboard();
@@ -1101,7 +1188,7 @@ async function start() {
           target: target,
           finder: data.finder,
           profit: IHATETAXES(target) - data.startingBid,
-          tag: 'a'
+          tag: data.tag
         };
       } else {
         auctionID = data.id;
@@ -1109,10 +1196,6 @@ async function start() {
         logmc(`§6[§bTPM§6] §aAdding ${itemName}§3 to the pipeline because state is ${bot.state}!`);
         stateManger.add(noColorCodes(itemName), 69, 'buying');
       }
-      idQueue.push(data.id);
-      targetQueue.push(data.target);
-      finderQueue.push(data.finder);
-      const ending = new Date(normalizeDate(data.purchaseAt)).getTime();
       webhookPricing[noColorCodes(itemName)] = {
         target: data.target,
         price: data.startingBid,
@@ -1120,6 +1203,10 @@ async function start() {
         bed: bed,
         finder: data.finder,
       };
+      idQueue.push(data.id);
+      targetQueue.push(data.target);
+      finderQueue.push(data.finder);
+      const ending = new Date(normalizeDate(data.purchaseAt)).getTime();
       if (currentTime < ending) {
         bed = '[BED]';
         if (webhookPricing[noColorCodes(itemName)]?.bed) {
