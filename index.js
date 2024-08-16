@@ -988,7 +988,7 @@ async function start() {
             .addField('', `Bought \`${utils.noColorCodes(match1[1])}\` for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) [click](${auctionUrl}) ${itemBed}`)
             .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
             .setColor(2615974);
-          webhook.send({ content: 'hi', embeds: [embed] });
+          webhook.send(embed);
         } else {
           try {
             await axios.post(config.webhook, {
