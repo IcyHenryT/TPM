@@ -64,10 +64,10 @@ const defaultConfig = `{
 
   },
   //Doesn't send your flips to /get_global_stats. Come on man I made a free macro and you can't even give me some data :( it's nothing like private
-  "keepEverythingPrivate": false
+  "keepEverythingPrivate": false,
 
   // DON'T SHARE THIS IT'S YOUR COFL ACCOUNT PASSWORD. If you can't see the cofl link set this to "session": "",
-  "session": "",
+  "session": ""
 
 }`;
 
