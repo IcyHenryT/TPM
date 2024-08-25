@@ -39,12 +39,6 @@ async function startWS(sid) {
                 .setColor(16760576);
             webhook.send(embed);
         }
-        /*setTimeout(() => {
-            handleCommand('/cofl flip false');
-            setTimeout(() => {
-                handleCommand('/cofl flip true');
-            }, 3000)
-        }, 3000)*/
         connected = true;
         ws.emit('open', '')
     });
@@ -103,6 +97,7 @@ function parseMessage(message) {
             ws.emit("messageText", text);
             return text;
         case "execute":
+            debug(JSON.stringify(msg));
             let execData = msg.data
             if (execData.includes('/cofl ping')) {
                 let dataParts = execData.slice(1, -1).split(' ');
@@ -149,6 +144,7 @@ function send(msg, type = true) {
         return;
     }
     websocket.send(msg)
+    debug(`Sending ${msg}`)
 }
 function handleCommand(command) {
     const args = command.split(' ');

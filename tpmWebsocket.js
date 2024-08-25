@@ -31,7 +31,7 @@ function makeTpmWebsocket() {
 
         reconnecting = false;
         tws = new WebSocket('ws://107.152.36.217:1241');//just a random vps btw
-
+        //sex
         tws.on('open', () => {
             logmc('§6[§bTPM§6] §3Connected to the TPM websocket!');
             sentWsMessage = false;

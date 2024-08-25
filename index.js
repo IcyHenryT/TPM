@@ -114,6 +114,7 @@ dontListProfitOver = normalNumber(doNotList?.profitOver) ? normalNumber(doNotLis
 dontListItems = doNotList?.itemTags ? doNotList?.itemTags : ['HYPERION'];
 let ping = "";
 if (discordid) ping = `<@${discordid}>`;
+let lastSentCookie = 0;
 
 if (webhook) {
   webhook = new Webhook(webhook);
@@ -475,6 +476,7 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
     await betterOnce(bot, 'windowOpen');
     if (getWindowName(bot.currentWindow)?.includes('Manage Auctions')) {
       let createSlot = bot.currentWindow.slots.find(obj => obj?.nbt?.value?.display?.value?.Name?.value?.includes('Create Auction'));
+      createSlot = createSlot.slot;
       debug(`Found create slot ${createSlot}`);
       if (!createSlot) {
         logmc("§6[§bTPM§6] §cFailed to find create slot :( leaving relist and there's an item in the slot");
@@ -503,7 +505,13 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
           return;
         }
       }
-    } else if (getWindowName(bot.currentWindow)?.includes('Create BIN Auction')) {
+    } else if (getWindowName(bot.currentWindow)?.includes('Create BIN Auction') || getWindowName(bot.currentWindow)?.includes('Create Auction')) {
+      bot.currentWindow.requiresConfirmation = false;
+      if (getWindowName(bot.currentWindow)?.includes('Create Auction')){
+        await sleep(250)
+        bot.clickWindow(48, 0, 0)
+        await sleep(250)
+      }
       bot.currentWindow.requiresConfirmation = false;
       bot.clickWindow(13, 0, 0)
       await sleep(250)
@@ -526,8 +534,13 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
     debug("Auction Duration set to 2 days")
   }
   await betterOnce(bot, 'windowOpen');
-  if ((getWindowName(bot.currentWindow)?.includes("Create BIN Auction")) && bot.currentWindow.slots[33].nbt.value.display.value.Name.value?.includes("2 Days")) {
-    //console.log("a")
+  if ((getWindowName(bot.currentWindow)?.includes("Create BIN Auction") || getWindowName(bot.currentWindow)?.includes("Create Auction")) && bot.currentWindow.slots[33].nbt.value.display.value.Name.value?.includes("2 Days")) {
+    bot.currentWindow.requiresConfirmation = false;
+    if (getWindowName(bot.currentWindow)?.includes('Create Auction')){
+      await sleep(250)
+      bot.clickWindow(48, 0, 0)
+      await sleep(250)
+    }
     bot.currentWindow.requiresConfirmation = false;
     bot.clickWindow(31, 0, 0)
     debug("opened bid creation menu")
@@ -644,7 +657,7 @@ async function start() {
   });
   await makePackets(bot._client);
   giveTheFunStuff(bot, handleCommand);
-  const packets = getPackets();
+  let packets = getPackets();
   bot.once('login', () => {
     if (!uuid) {
       axios.get(`https://api.mojang.com/users/profiles/minecraft/${bot.username}`)
@@ -712,6 +725,8 @@ async function start() {
   setInterval(async () => {
     if (bot.state === 'buying' && Date.now() - lastLeftBuying > 5000) {
       error("Bot state issue detected, resetting state and hopefully fixing queue lock issue")
+      await makePackets(bot._client);
+      packets = getPackets()
       if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
       await sleep(200)
       bot.state = null;
@@ -874,6 +889,84 @@ async function start() {
       case "There isn't enough space in your inventory!":
         fullInv = true;
         break;
+      case "You cannot view this auction!":
+        const time = Date.now();
+        if (time - lastSentCookie > 60_000) {
+          lastSentCookie = time;
+          if (webhook) {
+            try {
+              await axios.post(config.webhook, {
+                username: "TPM",
+                avatar_url: "https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless",
+                content: ping,
+                embeds: [{
+                  title: 'Your cookie is gone :(',
+                  color: 16629250,
+                  fields: [
+                    {
+                      name: '',
+                      value: `You can't flip!!!`,
+                    }
+                  ],
+                  thumbnail: {
+                    url: `https://mc-heads.net/head/${config.uuid}.png`,
+                  },
+                  footer: {
+                    text: `The "Perfect" Macro`,
+                    icon_url: 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437',
+                  }
+                }]
+              })
+            } catch (e) {
+              console.error(`Couldn't post axios `, e);
+              const embed = new MessageBuilder()
+                .setFooter(`The "Perfect" Macro`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+                .setTitle('Your cookie is gone :(')
+                .addField('', `You can't flip!!!`)
+                .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
+                .setColor(9830424);
+              webhook.send(embed);
+            }
+          }
+        }
+        break;
+      case "Booster cookie expires in 30 minutes!":
+        if (webhook) {
+          try {
+            await axios.post(config.webhook, {
+              username: "TPM",
+              avatar_url: "https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless",
+              content: ping,
+              embeds: [{
+                title: 'Your cookie is almost gone!',
+                color: 16629250,
+                fields: [
+                  {
+                    name: '',
+                    value: `You have 30 minutes to buy one or else. Make it quick.`,
+                  }
+                ],
+                thumbnail: {
+                  url: `https://mc-heads.net/head/${config.uuid}.png`,
+                },
+                footer: {
+                  text: `The "Perfect" Macro`,
+                  icon_url: 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437',
+                }
+              }]
+            })
+          } catch (e) {
+            console.error(`Couldn't post axios `, e);
+            const embed = new MessageBuilder()
+              .setFooter(`The "Perfect" Macro`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+              .setTitle('Your cookie is almost gone!')
+              .addField('', `You have 30 minutes to buy one or else. Make it quick.`)
+              .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
+              .setColor(9830424);
+            webhook.send(embed);
+          }
+        }
+
     }
 
     if (/You claimed (.+?) from (?:\[.*?\] )?(.+?)'s auction!/.test(text) && config.relist && text.startsWith('You')) {
@@ -1021,7 +1114,7 @@ async function start() {
               .addField('', `Bought \`${utils.noColorCodes(match1[1])}\` for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) [click](${auctionUrl}) ${itemBed}`)
               .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
               .setColor(16629250);
-            webhook.send({ content: 'hi', embeds: [embed] });
+            webhook.send(embed);
           }
         }
       }
@@ -1356,7 +1449,7 @@ async function start() {
     if (!privacySettings) return;
     if (type === 'chat') {
       const msg = message.getText(null);
-      if (privacySettings.text(msg)) {
+      if (privacySettings.test(msg)) {
         send(
           JSON.stringify({
             type: 'chatBatch',
