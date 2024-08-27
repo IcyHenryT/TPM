@@ -97,8 +97,9 @@ function getPurse(bot) {
             let pursey;
             let scoreboard = bot.scoreboard.sidebar.items.map(item => item.displayName.getText(null).replace(item.name, ''));
             scoreboard.forEach(e => {
-                if (e.includes('Purse:')) {
+                if (e.includes('Purse:' || e.includes('Piggy: '))) {
                     let purseString = e.substring(e.indexOf(':') + 1).trim();
+                    debug(`Found purse line ${purseString}`)
                     pursey = parseInt(purseString.replace(/\D/g, ''), 10);
                 }
             });
@@ -326,9 +327,22 @@ async function sendPingStats(ws, handleCommand, bot, sold, bought) {
             .addField('', bigThree)
             .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
             .setColor(randomWardenDye());
-        webhook.send(embed);
+        sendDiscord(embed)
+    }
+}
+
+async function sendDiscord(embed, attempt = 0) {
+    if (webhook) {
+        try {
+            webhook.send(embed);
+        } catch {
+            if (attempt < 3) {
+                await sleep(5000)
+                sendDiscord(embed, attempt++)
+            }
+        }
     }
 }
 
 const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
-module.exports = { noColorCodes, randomWardenDye, sendPingStats, onlyNumbers, normalizeDate, normalNumber, IHATETAXES, formatNumber, sleep, checkHypixelPing, TheBig3, checkCoflDelay, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders, betterOnce, checkCoflPing }
+module.exports = { noColorCodes, sendDiscord, randomWardenDye, sendPingStats, onlyNumbers, normalizeDate, normalNumber, IHATETAXES, formatNumber, sleep, checkHypixelPing, TheBig3, checkCoflDelay, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders, betterOnce, checkCoflPing }

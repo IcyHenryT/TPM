@@ -13,7 +13,7 @@ const utils = require(`./utils.js`);
 const { randomUUID } = require('crypto');
 const axios = require('axios');
 const stateManger = require(`./state.js`);
-const { noColorCodes, nicerFinders, normalizeDate, TheBig3, IHATETAXES, randomWardenDye, formatNumber, sleep, getWindowName, getPurse, relistCheck, addCommasToNumber, betterOnce, normalNumber, sendPingStats } = require('./utils.js');
+const { noColorCodes, sendDiscord, nicerFinders, normalizeDate, TheBig3, IHATETAXES, randomWardenDye, formatNumber, sleep, getWindowName, getPurse, relistCheck, addCommasToNumber, betterOnce, normalNumber, sendPingStats } = require('./utils.js');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
 const { getPackets, makePackets } = require('./packetStuff.js');
 const { silly, debug, error, info, logmc } = require('./logger.js');
@@ -409,15 +409,13 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
       //ping on this
       //turn off relist ig?
       logmc("§6[§bTPM§6] §cAborting relist because of full inventory (unable to claim item for relist)")
-      if (webhook) {
-        const embed = new MessageBuilder()
-          .setFooter(`The "Perfect" Macro`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
-          .setTitle('Inventory Full')
-          .addField('', `Unable to claim item for relist due to full inventory. Please log on and clear space in inventory to continue auto relisting (:`)
-          .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
-          .setColor(2615974);
-        webhook.send(embed);
-      }
+      const embed = new MessageBuilder()
+        .setFooter(`The "Perfect" Macro`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+        .setTitle('Inventory Full')
+        .addField('', `Unable to claim item for relist due to full inventory. Please log on and clear space in inventory to continue auto relisting (:`)
+        .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
+        .setColor(2615974);
+      sendDiscord(embed);
       bot.state = null;
       return;
     }
@@ -507,7 +505,7 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
       }
     } else if (getWindowName(bot.currentWindow)?.includes('Create BIN Auction') || getWindowName(bot.currentWindow)?.includes('Create Auction')) {
       bot.currentWindow.requiresConfirmation = false;
-      if (getWindowName(bot.currentWindow)?.includes('Create Auction')){
+      if (getWindowName(bot.currentWindow)?.includes('Create Auction')) {
         await sleep(250)
         bot.clickWindow(48, 0, 0)
         await sleep(250)
@@ -536,7 +534,7 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
   await betterOnce(bot, 'windowOpen');
   if ((getWindowName(bot.currentWindow)?.includes("Create BIN Auction") || getWindowName(bot.currentWindow)?.includes("Create Auction")) && bot.currentWindow.slots[33].nbt.value.display.value.Name.value?.includes("2 Days")) {
     bot.currentWindow.requiresConfirmation = false;
-    if (getWindowName(bot.currentWindow)?.includes('Create Auction')){
+    if (getWindowName(bot.currentWindow)?.includes('Create Auction')) {
       await sleep(250)
       bot.clickWindow(48, 0, 0)
       await sleep(250)
@@ -925,7 +923,7 @@ async function start() {
                 .addField('', `You can't flip!!!`)
                 .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
                 .setColor(9830424);
-              webhook.send(embed);
+              sendDiscord(embed)
             }
           }
         }
@@ -963,7 +961,7 @@ async function start() {
               .addField('', `You have 30 minutes to buy one or else. Make it quick.`)
               .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
               .setColor(9830424);
-            webhook.send(embed);
+            sendDiscord(embed)
           }
         }
 
@@ -989,7 +987,7 @@ async function start() {
           .addField('', `Listed \`${item}\` for \`${addCommasToNumber(lastListedTargets.shift())} coins\` [click](${auctionUrl}) \n [AH Slots: ${currentlisted}/${totalslots}]`)
           .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
           .setColor(13677311);
-        webhook.send(embed);
+        sendDiscord(embed)
       }
       sendScoreboard();
     }
@@ -1051,7 +1049,7 @@ async function start() {
                   .addField('', `${match1[1]} isn't being listed because it's in your Do Not List Items in your config file`)
                   .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
                   .setColor(9830424);
-                webhook.send(embed);
+                sendDiscord(embed)
               }
               logmc(`§6[§bTPM§6] §c${match1[1]} is your Do Not List, not relisting`);
             }
@@ -1081,7 +1079,7 @@ async function start() {
             .addField('', `Bought \`${utils.noColorCodes(match1[1])}\` for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) [click](${auctionUrl}) ${itemBed}`)
             .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
             .setColor(2615974);
-          webhook.send(embed);
+          sendDiscord(embed)
         } else {
           try {
             await axios.post(config.webhook, {
@@ -1114,7 +1112,7 @@ async function start() {
               .addField('', `Bought \`${utils.noColorCodes(match1[1])}\` for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) [click](${auctionUrl}) ${itemBed}`)
               .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
               .setColor(16629250);
-            webhook.send(embed);
+            sendDiscord(embed)
           }
         }
       }
@@ -1150,7 +1148,7 @@ async function start() {
           .addField('', `Collected \`${addCommasToNumber(price)} coins\` for selling \`${item}\` to \`${buyer}\``)
           .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
           .setColor(16731310);
-        webhook.send(embed);
+        sendDiscord(embed)
       }
       setTimeout(async () => {
         if (bot.state === null) {
@@ -1296,6 +1294,7 @@ async function start() {
         bed: bed,
         finder: data.finder,
       };
+      debug(`Added ${noColorCodes(itemName)} to webhookPricing`)
       idQueue.push(data.id);
       targetQueue.push(data.target);
       finderQueue.push(data.finder);
@@ -1378,6 +1377,7 @@ async function start() {
         tag: data.auction.tag,
         profit: IHATETAXES(data.target) - data.auction.startingBid
       };
+      debug(`Added ${weirdName} to webhookPricing`)
       if (currentTime < ending) {
         bed = '[BED]';
         if (webhookPricing[weirdName]?.bed) {
@@ -1398,7 +1398,7 @@ async function start() {
           if (getWindowName(bot.currentWindow)?.includes('BIN Auction View') && currentOpen === auctionID) {
             bot.closeWindow(bot.currentWindow);
             bot.state = null;
-            logmc(`§6[§bTPM§6] §cBed timing failed and we had to abort the auction :(`);
+            logmc(`§6[§bTPM§6] §cBed timing failed and we had to abort the auction :( Please lower your waittime if this continues or turn on bedspam`);
           }
         }, 5000);
       }

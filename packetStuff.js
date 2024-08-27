@@ -15,14 +15,14 @@ async function makePackets(client) {
             })
         },
         click: function (slot, id) {
-            client.write('window_click',{
+            client.write('window_click', {
                 windowId: id,
                 slot: slot,
                 mouseButton: 2,
                 action: 3,
                 mode: null,
                 item: 0
-        })
+            })
         }
     }
     bot = remake;

@@ -1,10 +1,10 @@
 const EventEmitter = require('events');
 const { logmc, debug, error } = require("./logger.js");
-const { sleep, formatNumber, noColorCodes } = require("./utils.js");
+const { sleep, formatNumber, noColorCodes, sendDiscord } = require("./utils.js");
 const axios = require('axios');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
 let { config, updateConfig } = require('./config.js');
-const { getPackets } =  require('./packetStuff.js');
+const { getPackets } = require('./packetStuff.js');
 let webhook;
 let id = config.discordID;
 const ws = new EventEmitter();
@@ -37,7 +37,7 @@ async function startWS(sid) {
                 .addField('', `Logged in as \`${config.username}\``)
                 .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
                 .setColor(16760576);
-            webhook.send(embed);
+            sendDiscord(embed);
         }
         connected = true;
         ws.emit('open', '')
@@ -109,7 +109,7 @@ function parseMessage(message) {
                 handleCommand(execData)
             } else {
                 const packets = getPackets();
-                if(!packets) return;
+                if (!packets) return;
                 packets.sendMessage(execData);
             }
             break;
@@ -271,7 +271,7 @@ function checkCaptchaSolution(message) {
                 .addField('', `Lmao they thought you were real`)
                 .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
                 .setColor(5294200);
-            webhook.send(embed);
+            sendDiscord(embed);
         } else if (data.text.includes("solved the captcha, but")) {
             const embed = new MessageBuilder()
                 .setFooter(`The "Perfect" Macro - 1.1.9`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
@@ -279,7 +279,7 @@ function checkCaptchaSolution(message) {
                 .addField('', `Sadly there are more captchas`)
                 .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
                 .setColor(15335387);
-            webhook.send(embed);
+            sendDiscord(embed);
         }
     }
 }
