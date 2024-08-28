@@ -97,7 +97,7 @@ function getPurse(bot) {
             let pursey;
             let scoreboard = bot.scoreboard.sidebar.items.map(item => item.displayName.getText(null).replace(item.name, ''));
             scoreboard.forEach(e => {
-                if (e.includes('Purse:' || e.includes('Piggy: '))) {
+                if (e.includes('Purse:') || e.includes('Piggy: ')) {
                     let purseString = e.substring(e.indexOf(':') + 1).trim();
                     debug(`Found purse line ${purseString}`)
                     pursey = parseInt(purseString.replace(/\D/g, ''), 10);
