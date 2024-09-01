@@ -95,11 +95,12 @@ function getPurse(bot) {
     return new Promise((resolve, reject) => {
         try {
             let pursey;
-            let scoreboard = bot.scoreboard.sidebar.items.map(item => item.displayName.getText(null).replace(item.name, ''));
-            scoreboard.forEach(e => {
-                if (e.includes('Purse:') || e.includes('Piggy: ')) {
+            let scoreboard = bot?.scoreboard?.sidebar?.items?.map(item => item?.displayName?.getText(null)?.replace(item.name, ''));
+            scoreboard?.forEach(e => {
+                if (e.includes('Purse:') || e.includes('Piggy:')) {
                     let purseString = e.substring(e.indexOf(':') + 1).trim();
                     debug(`Found purse line ${purseString}`)
+                    if (purseString.includes('(')) purseString = purseString.split('(')[0];
                     pursey = parseInt(purseString.replace(/\D/g, ''), 10);
                 }
             });
@@ -184,11 +185,13 @@ async function checkHypixelPing(bot) {
     return new Promise((resolve, reject) => {
         let sent = false;
         bot.chat('/social pingwars');
+        const pingwarsRegex = /Your Ping - ([\d,]+)ms/;
+        const cooldownRegex = /You must wait to use social commands again!/;
+        const badAtGame = /You do not have a high enough Social Skill to use this!/;
         const listen = (message, type) => {
             let text = noColorCodes(message.getText(null));
             if (type === 'chat') {
-                const pingwarsRegex = /Your Ping - ([\d,]+)ms/;
-                const cooldownRegex = /You must wait to use social commands again!/;
+
                 const match = text.match(pingwarsRegex);
                 if (match) {
                     bot.off('message', listen);
@@ -201,6 +204,12 @@ async function checkHypixelPing(bot) {
                     sent = true;
                     //console.log(`found ${match[1]}ms hypixel ping`);
                     resolve(`Pingwars is on cooldown :(`);
+                }
+                if (text.match(badAtGame)) {
+                    bot.off('message', listen);
+                    sent = true;
+                    //console.log(`found ${match[1]}ms hypixel ping`);
+                    resolve(`You need social level 4 for this`);
                 }
 
             }
@@ -320,21 +329,19 @@ function normalNumber(num) {
 
 async function sendPingStats(ws, handleCommand, bot, sold, bought) {
     const bigThree = await TheBig3(ws, handleCommand, bot);
-    if (webhook) {
-        const embed = new MessageBuilder()
-            .setFooter(`TPM - Bought ${bought} - Sold ${sold}`, `https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437`)
-            .setTitle('Ping!')
-            .addField('', bigThree)
-            .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
-            .setColor(randomWardenDye());
-        sendDiscord(embed)
-    }
+    const embed = new MessageBuilder()
+        .setFooter(`TPM - Bought ${bought} - Sold ${sold}`, `https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437`)
+        .setTitle('Ping!')
+        .addField('', bigThree)
+        .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
+        .setColor(randomWardenDye());
+    sendDiscord(embed);
 }
 
 async function sendDiscord(embed, attempt = 0) {
     if (webhook) {
         try {
-            webhook.send(embed);
+            await webhook.send(embed);
         } catch {
             if (attempt < 3) {
                 await sleep(5000)

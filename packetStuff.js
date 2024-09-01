@@ -1,4 +1,5 @@
 let bot;
+let actionID = 1;
 function getPackets() {
     if (bot) {
         return bot;
@@ -14,14 +15,25 @@ async function makePackets(client) {
                 message: text
             })
         },
-        click: function (slot, id) {
+        click: function (slot, id, itemID) {
             client.write('window_click', {
                 windowId: id,
                 slot: slot,
                 mouseButton: 2,
-                action: 3,
-                mode: null,
-                item: 0
+                mode: 3,
+                item: { "blockId": itemID },
+                action: 1
+            })
+            actionID++
+        },
+        bump: function () {
+            actionID++
+        },
+        confirmClick: function (windowID) {
+            client.write('transaction', {
+                windowId: windowID,
+                action: actionID,
+                accepted: true
             })
         }
     }

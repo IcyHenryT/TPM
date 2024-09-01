@@ -24,7 +24,7 @@ const { config, updateConfig } = require('./config.js');
 const nbt = require('prismarine-nbt');
 const { sendFlip, giveTheFunStuff, updateSold } = require('./tpmWebsocket.js');
 
-let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList;
+let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip;
 
 function testign() {
   if (config.username.trim() === '') {
@@ -109,9 +109,11 @@ usInstance = config.usInstance;
 percentOfTarget = config.percentOfTarget;
 relist = config.relist;
 ownAuctions = config.ownAuctions;
+useSkip = config.useSkip;
 badFinders = doNotList?.finders ? doNotList?.finders : ['USER'];
 dontListProfitOver = normalNumber(doNotList?.profitOver) ? normalNumber(doNotList?.profitOver) : 50_000_000;
 dontListItems = doNotList?.itemTags ? doNotList?.itemTags : ['HYPERION'];
+dontListSkins = doNotList?.skins || true;
 let ping = "";
 if (discordid) ping = `<@${discordid}>`;
 let lastSentCookie = 0;
@@ -152,6 +154,18 @@ let lastLeftBuying;
 let waitting;
 let boughtItems = 0, soldItems = 0;
 let lastRelistCheck = Date.now();
+let packets;
+let buyspeed, confirmAt, oldConfirmAt;
+
+function betterClick(slot, mode1 = 0, mode2 = 0) {
+  if (!bot.currentWindow) {
+    debug(`No window found for clicking ${slot}`);
+    return;
+  }
+  packets.bump();
+  bot.currentWindow.requiresConfirmation = false;
+  bot.clickWindow(slot, mode1, mode2)
+}
 
 async function getReady() {
   ranit = true;
@@ -166,8 +180,8 @@ async function getReady() {
       //console.log("item",bot.currentWindow.slots[48].nbt.value.display.value.Name.value)
       if (bot.currentWindow.title.includes("SkyBlock Menu") && bot.currentWindow.slots[48].nbt.value.display.value.Name.value.includes("Profile Management")) {
         //console.log("bonk")
-        bot.currentWindow.requiresConfirmation = false;
-        bot.clickWindow(48, 0, 0)
+
+        betterClick(48, 0, 0)
         debug("profile management opened")
         bot.once('windowOpen', async (window) => {
           //.log("check2")
@@ -262,24 +276,24 @@ async function getReady() {
                       if (toclaim1) {
                         await sleep(500)
                         if (bot.currentWindow) {
-                          bot.currentWindow.requiresConfirmation = false;
-                          bot.clickWindow(15, 0, 0)
+
+                          betterClick(15, 0, 0)
                         } else {
                           error(`Didn't get a window step 1 of ready`)
                         }
                         await betterOnce(bot, 'windowOpen');
                         await sleep(500)
                         if (bot.currentWindow) {
-                          bot.currentWindow.requiresConfirmation = false;
-                          bot.clickWindow(10, 0, 0)
+
+                          betterClick(10, 0, 0)
                         } else {
                           error(`Didn't get a window step 2 of ready`)
                         }
                         await betterOnce(bot, 'windowOpen');
                         await sleep(500)
                         if (bot.currentWindow) {
-                          bot.currentWindow.requiresConfirmation = false;
-                          bot.clickWindow(31, 0, 0)
+
+                          betterClick(31, 0, 0)
                         } else {
                           error(`Didn't get a window step 3 of ready`)
                         }
@@ -293,8 +307,8 @@ async function getReady() {
 
                         await sleep(500);
                         if (bot.currentWindow) {
-                          bot.currentWindow.requiresConfirmation = false;
-                          bot.clickWindow(15, 0, 0)
+
+                          betterClick(15, 0, 0)
                         }
                         await betterOnce(bot, 'windowOpen');
                         await sleep(500)
@@ -309,22 +323,22 @@ async function getReady() {
                               if (itemName.includes("Claim All") && bot.currentWindow) {
                                 //console.log(`Found 'Claim All' at slot ${slot}`);
                                 // Perform your action here
-                                bot.currentWindow.requiresConfirmation = false;
-                                bot.clickWindow(slot, 0, 0);
+
+                                betterClick(slot, 0, 0);
                               }
                             } else {
                               if (itemName.includes("Claim Your") && bot.currentWindow) {
                                 //console.log(`Found 'Claim Your Listings Only' at slot ${slot}`);
                                 // Perform your action here
-                                bot.currentWindow.requiresConfirmation = false;
-                                bot.clickWindow(slot, 0, 0);
+
+                                betterClick(slot, 0, 0);
                               }
                             }
 
                           }
                         });
-                        // bot.currentWindow.requiresConfirmation = false;
-                        // bot.clickWindow(30, 0, 0);
+                        // 
+                        // betterClick(30, 0, 0);
                         debug("claimed multiple already sold auctions");
                         currentlisted -= bids
                         debug("currentlisted updated to", currentlisted)
@@ -381,13 +395,13 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
       if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
       return;
     }
-    bot.currentWindow.requiresConfirmation = false;
-    bot.clickWindow(31, 0, 0)
+
+    betterClick(31, 0, 0)
     debug("claim click")
     await sleep(500)
     if (cdClaim > 0 && bot.currentWindow) {
-      bot.currentWindow.requiresConfirmation = false;
-      bot.clickWindow(31, 0, 0)
+
+      betterClick(31, 0, 0)
       debug("claim click 2 (after first cooldown)")
       await sleep(200)
       if (!relistClaim) {
@@ -402,8 +416,8 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
       }
     }
     if (fullInv && bot.currentWindow) {
-      bot.currentWindow.requiresConfirmation = false;
-      bot.clickWindow(31, 0, 0)
+
+      betterClick(31, 0, 0)
       debug("claim click 2 (after full inv)")
       await sleep(200)
       //ping on this
@@ -445,9 +459,8 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
     if (nbt.simplify(item?.nbt)?.ExtraAttributes?.uuid == itemuuid) {
       debug("found item in inventory to relist with uuid", itemuuid)
       uuidFound = true;
-      bot.currentWindow.requiresConfirmation = false;
       await sleep(200)
-      bot.clickWindow(item.slot, 0, 0)
+      betterClick(item.slot, 0, 0)
       debug("added item into ah menu")
     }
   })
@@ -464,13 +477,11 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
   if ((getWindowName(bot.currentWindow)?.includes("Create BIN Auction")) && bot.currentWindow.slots[33].nbt.value.display.value.Name.value?.includes("6 Hours")) {
     debug("Auction Duration Menu Opened")
     await sleep(200)
-    bot.currentWindow.requiresConfirmation = false;
-    bot.clickWindow(33, 0, 0)
+    betterClick(33, 0, 0)
   } else if (!getWindowName(bot.currentWindow)?.includes('Create BIN Auction')) {
     logmc("§6[§bTPM§6] §cItem probably already in slot, attempting to remove it");
     await sleep(200)
-    bot.currentWindow.requiresConfirmation = false;
-    bot.clickWindow(15, 0, 0)
+    betterClick(15, 0, 0)
     await betterOnce(bot, 'windowOpen');
     if (getWindowName(bot.currentWindow)?.includes('Manage Auctions')) {
       let createSlot = bot.currentWindow.slots.find(obj => obj?.nbt?.value?.display?.value?.Name?.value?.includes('Create Auction'));
@@ -483,13 +494,11 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
         bot.state = null;
         return;
       } else {
-        bot.currentWindow.requiresConfirmation = false;
-        bot.clickWindow(createSlot, 0, 0)
+        betterClick(createSlot, 0, 0)
         await betterOnce(bot, 'windowOpen');
         await sleep(250);
         if (getWindowName(bot.currentWindow)?.includes('Create BIN Auction')) {
-          bot.currentWindow.requiresConfirmation = false;
-          bot.clickWindow(13, 0, 0)
+          betterClick(13, 0, 0)
           await sleep(250)
           bot.state = null;
           if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
@@ -504,14 +513,12 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
         }
       }
     } else if (getWindowName(bot.currentWindow)?.includes('Create BIN Auction') || getWindowName(bot.currentWindow)?.includes('Create Auction')) {
-      bot.currentWindow.requiresConfirmation = false;
       if (getWindowName(bot.currentWindow)?.includes('Create Auction')) {
-        await sleep(250)
-        bot.clickWindow(48, 0, 0)
-        await sleep(250)
+        await sleep(250);
+        betterClick(48, 0, 0);
+        await sleep(250);
       }
-      bot.currentWindow.requiresConfirmation = false;
-      bot.clickWindow(13, 0, 0)
+      betterClick(13, 0, 0)
       await sleep(250)
       bot.state = null;
       if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
@@ -527,20 +534,17 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
   }
   await betterOnce(bot, 'windowOpen');
   if (bot.currentWindow?.title?.includes("Auction Duration")) {
-    bot.currentWindow.requiresConfirmation = false;
-    bot.clickWindow(14, 0, 0)
+    betterClick(14, 0, 0)
     debug("Auction Duration set to 2 days")
   }
   await betterOnce(bot, 'windowOpen');
   if ((getWindowName(bot.currentWindow)?.includes("Create BIN Auction") || getWindowName(bot.currentWindow)?.includes("Create Auction")) && bot.currentWindow.slots[33].nbt.value.display.value.Name.value?.includes("2 Days")) {
-    bot.currentWindow.requiresConfirmation = false;
     if (getWindowName(bot.currentWindow)?.includes('Create Auction')) {
       await sleep(250)
-      bot.clickWindow(48, 0, 0)
+      betterClick(48, 0, 0)
       await sleep(250)
     }
-    bot.currentWindow.requiresConfirmation = false;
-    bot.clickWindow(31, 0, 0)
+    betterClick(31, 0, 0)
     debug("opened bid creation menu")
   }
   await sleep(500)
@@ -582,15 +586,14 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
   });
   debug("set list price to", listpriceomg);
   await sleep(500)
-  debug("AAAAAAAAAAAAA", bot.currentWindow.slots[31].nbt.value.display.value.Name.value)
+  debug("AAAAAAAAAAAAA", bot.currentWindow?.slots[31]?.nbt?.value?.display?.value?.Name?.value)
   debug("Listed price", listpriceomg)
   let numWithCommas = addCommasToNumber(listpriceomg)
   debug(numWithCommas)
   await sleep(500)
   debug("Debug time:", getWindowName(bot.currentWindow), bot.currentWindow.slots[31].nbt.value.display.value.Name.value, bot.currentWindow.slots[33].nbt.value.display.value.Name.value)
   if (getWindowName(bot.currentWindow)?.includes("Create BIN Auction") && bot.currentWindow.slots[31].nbt.value.display.value.Name.value?.includes(`${numWithCommas} coins`) && bot.currentWindow.slots[33].nbt.value.display.value.Name.value?.includes("2 Days")) {
-    bot.currentWindow.requiresConfirmation = false;
-    bot.clickWindow(29, 0, 0)
+    betterClick(29, 0, 0)
     debug("bid confirmed, finalizing auction listing")
     lastListedIds.push(idToRelist);
     lastListedTargets.push(listpriceomg);
@@ -602,8 +605,7 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
   }
   await betterOnce(bot, 'windowOpen');
   if (bot.currentWindow?.title.includes("Confirm BIN Auction")) {
-    bot.currentWindow.requiresConfirmation = false;
-    bot.clickWindow(11, 0, 0)
+    betterClick(11, 0, 0)
     currentlisted++;
     await betterOnce(bot, 'windowOpen');
     if (bot.currentWindow?.slots[29]?.type == 394 && (getWindowName(bot.currentWindow)?.includes("BIN Auction View"))) {
@@ -627,9 +629,9 @@ if (!session) {
 async function start() {
   let uuid = config.uuid;
   let stuckFailsafe = null;
-
+  //const token = ""
   // logging
-  /*const bot = mineflayer.createBot({
+  /*bot = mineflayer.createBot({
     host: 'hypixel.net',
     port: 25565,
     version: '1.8.9',
@@ -655,29 +657,94 @@ async function start() {
   });
   await makePackets(bot._client);
   giveTheFunStuff(bot, handleCommand);
-  let packets = getPackets();
+  packets = getPackets();
   bot.once('login', () => {
-    if (!uuid) {
-      axios.get(`https://api.mojang.com/users/profiles/minecraft/${bot.username}`)
-        .then(response => {
-          uuid = response.data.id;
-          config.uuid = uuid;
-          updateConfig(config)
-        })
-        .catch(error => {
-          console.error(`Error fetching UUID for ign ${bot.username}:`, error);
-        });
-    }
+    axios.get(`https://api.mojang.com/users/profiles/minecraft/${bot.username}`)
+      .then(response => {
+        uuid = response.data.id;
+        config.uuid = uuid;
+        config.username = bot.username;
+        updateConfig(config);
+      })
+      .catch(error => {
+        console.error(`Error fetching UUID for ign ${bot.username}:`, error);
+      });
+
   })
   bot.state = 'moving';
   let firstGui;
-  Window.on('newWindow', async window => {
-    bot.currentWindow.requiresConfirmation = false;
+  bot._client.on('open_window', async (window) => {
+    try {
+      const windowID = window.windowId;
+      const nextWindowID = windowID === 100 ? 1 : windowID + 1
+      const windowName = window.windowTitle;
+      debug(`Found new window ${windowName}, ${windowID}`);
+      packets.confirmClick(windowID);
+      if (windowName === '{"italic":false,"extra":[{"text":"BIN Auction View"}],"text":""}' && bot.state !== 'listing') {
+        firstGui = Date.now();
+        const item = await itemLoad(31);
+        const itemName = item.name;
+        //console.log(`Item found ${itemName}`);
+        switch (itemName) {
+          case "gold_nugget":
+            // = false;
+            debug(`Clicking nugget ${windowID}`)
+            packets.click(31, windowID, 371);
+            if (useSkip) packets.click(11, nextWindowID, 159);
+            break;
+          case 'poisonous_potato':
+            logmc(`§6[§bTPM§6] Can't afford flip, closing GUI.`)
+            bot.closeWindow(bot.currentWindow);
+            bot.state = null;
+            break;
+          case 'potato':
+            logmc(`§6[§bTPM§6] Potatoed, closing GUI.`)
+            bot.closeWindow(bot.currentWindow);
+            bot.state = null;
+            break;
+          case 'feather':
+            logmc(`§6[§bTPM§6] Potatoed, closing GUI.`)
+            bot.closeWindow(bot.currentWindow);
+            bot.state = null;
+            break;
+          case 'gold_block':
+            betterClick(31, 0, 0);
+            bot.state = null;
+            break;
+          case "bed":
+            logmc(`§6[§bTPM§6] Found a bed!`)
+            break;
+        }
+      } else if (windowName === '{"italic":false,"extra":[{"text":"Confirm Purchase"}],"text":""}') {
+        confirmAt = Date.now() - firstGui
+        logmc(`§6[§bTPM§6] §3Confirm at ${confirmAt}ms`);
+        await itemLoad(11);
+        betterClick(11, 0, 0);
+        debug(`Clicking confirm ${window.windowId}`);
+        if (bedSpam || bedFailed) {
+          for (i = 1; i < 11; i++) {
+            await sleep(30);
+            if (getWindowName(bot.currentWindow)) {
+              betterClick(11, 0, 0);
+            } else {
+              break;
+            }
+          }
+        }
+        bot.state = null;
+      }
+    } catch (e) {
+      error(e)
+    }
+  })
+
+  /*Window.on('newWindow', async window => {
+    
     const name = getWindowName(window);
     lastGui = Date.now();
     if (name === 'BIN Auction View' && bot.state !== 'listing') {
       debug("bot state", bot.state)
-      bot.clickWindow(31, 0, 0);
+      //betterClick(31, 0, 0);
       lastLeftBuying = Date.now();
       bot.state = 'buying';
       firstGui = lastGui;
@@ -701,13 +768,13 @@ async function start() {
           break;
       }
     } else if (name === 'Confirm Purchase') {
-      bot.clickWindow(11, 0, 0);
+      betterClick(11, 0, 0);
       logmc(`§6[§bTPM§6] §3Confirm at ${Date.now() - firstGui}ms`);
       if (bedSpam || bedFailed) {
         for (i = 1; i < 11; i++) {
           await sleep(30);
           if (getWindowName(bot.currentWindow)) {
-            bot.clickWindow(11, 0, 0)
+            betterClick(11, 0, 0)
           } else {
             i = 11;
           }
@@ -715,16 +782,16 @@ async function start() {
       }
       bot.state = null;
     }
-  });
-  setInterval(() => {
+  });*/
+  /*setInterval(() => {
     //Custom window handler
     check(bot);
-  }, 1);
+  }, 1);*/
   setInterval(async () => {
     if (bot.state === 'buying' && Date.now() - lastLeftBuying > 5000) {
       error("Bot state issue detected, resetting state and hopefully fixing queue lock issue")
       await makePackets(bot._client);
-      packets = getPackets()
+      packets = getPackets();
       if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
       await sleep(200)
       bot.state = null;
@@ -783,6 +850,13 @@ async function start() {
             currentOpen = ahid
             bot.chat(`/viewauction ${ahid}`);
             toRun = `/viewauction ${ahid}`
+            relistObject[command] = {
+              id: ahid,
+              target: ahhhhh.target,
+              finder: ahhhhh.finder,
+              tag: ahhhhh.tag,
+              profit: ahhhhh.profit
+            };
           } else {
             error(`Ahhh didn't find ${command} in ${JSON.stringify(webhookPricing)} leaving queue and not changing state`);
             stateManger.next();
@@ -804,7 +878,7 @@ async function start() {
     bot.state = 'moving';
     bot.chat('/play sb');
     await sleep(5000);
-    bot.chat('/is');
+    bot.chat('/is');//TODO change  to IS
     setInterval(() => {
       const board = bot.scoreboard?.sidebar?.items;
       if (!board) {
@@ -851,13 +925,16 @@ async function start() {
   });
   bot.on('message', async (message, type) => {
     let text = message.getText(null);
-    const msg = new ChatMessage(message);
     if (type === 'chat') {
       logmc(message.toAnsi());
     }
     switch (text) {
       case 'Putting coins in escrow...':
-        logmc(`§6[§bTPM§6] §3Auction bought in ${Date.now() - firstGui}ms`);
+        if (!buyspeed || confirmAt !== oldConfirmAt) {
+          buyspeed = Date.now() - firstGui
+          oldConfirmAt = confirmAt;
+        }
+        logmc(`§6[§bTPM§6] §3Auction bought in ${buyspeed}ms`);
         bot.state = null;
         if (bot.currentWindow && !closedGui) bot.closeWindow(bot.currentWindow);
         closedGui = true;
@@ -1013,31 +1090,35 @@ async function start() {
           const profit = object.profit;
           if (!badFinders?.includes(lastPurchasedFinder)) {
             if (!dontListItems.includes(itemTag)) {
-              if (profit < dontListProfitOver) {
-                purchasedFinders.push(lastPurchasedFinder);
-                setTimeout(async () => {
-                  if (bot.state === null) {
-                    //bot.state = 'listing';
-                    if (fullInv) {
-                      logmc("§6[§bTPM§6] §cNot attempting to relist because your inventory is full. You will need to log in and clear your inventory to continue")
-                      bot.state = null;
-                    } else {
-                      if (relistCheck(currentlisted, totalslots, bot.state)) {
-                        bot.state = "listing";
-                        await sleep(500);
-                        relistHandler(lastPurchasedAhid, lastPurchasedTarget);
-                      } else {
-                        debug(`relist check didn't work`);
-                        stateManger.add({ id: lastPurchasedAhid, targets: lastPurchasedTarget }, Infinity, 'listing');
+              if (profit < dontListProfitOver && profit > 0) {
+                if (dontListSkins && (!item.includes('✦') || !item.toLowerCase().includes('skin'))) {
+                  purchasedFinders.push(lastPurchasedFinder);
+                  setTimeout(async () => {
+                    if (bot.state === null) {
+                      //bot.state = 'listing';
+                      if (fullInv) {
+                        logmc("§6[§bTPM§6] §cNot attempting to relist because your inventory is full. You will need to log in and clear your inventory to continue")
                         bot.state = null;
+                      } else {
+                        if (relistCheck(currentlisted, totalslots, bot.state)) {
+                          bot.state = "listing";
+                          await sleep(500);
+                          relistHandler(lastPurchasedAhid, lastPurchasedTarget);
+                        } else {
+                          debug(`relist check didn't work`);
+                          stateManger.add({ id: lastPurchasedAhid, targets: lastPurchasedTarget }, Infinity, 'listing');
+                          bot.state = null;
+                        }
                       }
+                    } else {
+                      debug(`bot state check didn't work`);
+                      stateManger.add({ id: lastPurchasedAhid, targets: lastPurchasedTarget }, Infinity, 'listing');
+                      bot.state = null;
                     }
-                  } else {
-                    debug(`bot state check didn't work`);
-                    stateManger.add({ id: lastPurchasedAhid, targets: lastPurchasedTarget }, Infinity, 'listing');
-                    bot.state = null;
-                  }
-                }, 10000);
+                  }, 10000);
+                } else {
+                  logmc(`§6[§bTPM§6] §c${match1[1]} is skinned or is a skin so it's not getting relisted. You can change this in your config file`);
+                }
               } else {
                 logmc(`§6[§bTPM§6] §c${match1[1]} is ${formatNumber(profit)} profit so it's not getting relisted. You can change this in your config file`);
               }
@@ -1058,12 +1139,12 @@ async function start() {
             // specialitems(lastPurchasedAhid[lastPurchasedAhid.length - 1])
           }
         } else {
-          error(`Didn't find ${item} in ${JSON.stringify(relistObject)} Please report this to icyhenryt`);
+          error(`Didn't find ${item} in ${JSON.stringify(relistObject)} RELIST Please report this to icyhenryt`);
         }
       }
       const price = match1[2];
       if (!webhookPricing[item]) {
-        error(`Didn't find ${item} in ${JSON.stringify(webhookPricing)} Please report this to icyhenryt`);
+        error(`Didn't find ${item} in ${JSON.stringify(webhookPricing)} WEBHOOK Please report this to icyhenryt`);
         return;
       }
       const itemBed = webhookPricing[item].bed;
@@ -1076,7 +1157,7 @@ async function start() {
           const embed = new MessageBuilder()
             .setFooter(`TPM - Found by ${nicerFinders(webhookPricing[item].finder)} - Purse: ${purse} `, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
             .setTitle('Item purchased')
-            .addField('', `Bought \`${utils.noColorCodes(match1[1])}\` for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) [click](${auctionUrl}) ${itemBed}`)
+            .addField('', `Bought [\`\`${utils.noColorCodes(match1[1])}\`\`](${auctionUrl}) for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) in \`\`${buyspeed}ms\`\``)
             .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
             .setColor(2615974);
           sendDiscord(embed)
@@ -1116,7 +1197,8 @@ async function start() {
           }
         }
       }
-      sendFlip(webhookPricing[item].auctionId, profit, price, itemBed, utils.noColorCodes(match1[1]), webhookPricing[item].finder)
+      sendFlip(webhookPricing[item].auctionId, profit, price, itemBed, utils.noColorCodes(match1[1]), webhookPricing[item].finder, buyspeed)
+      buyspeed = null;
       sendScoreboard();
       if (!config.relist) {
         setTimeout(async () => {
@@ -1162,12 +1244,13 @@ async function start() {
       }, 500);
     }
   });
+
   function askUser() {
     rl.question('> ', async input => {
       const args = input.trim().split(/\s+/);
+      let message = args.slice(1).join(' ');;
       switch (args[0]) {
         case 'chat':
-          const message = args.slice(1).join(' ');
           packets.sendMessage(message);
           break;
         case '/cofl':
@@ -1179,6 +1262,11 @@ async function start() {
             handleCommand(input);
           }
           break;
+        case "/fc":
+          handleCommand(`/cofl chat ${message}`);
+        case "/ping":
+        case "/getping":
+          sendPingStats(ws, handleCommand, bot, soldItems, boughtItems);
         case '!c':
           solveCaptcha(args[1]);
           break;
@@ -1191,28 +1279,28 @@ async function start() {
     bot.chat('/ah');
     await sleep(300);
     if (!bot.currentWindow) return;
-    bot.currentWindow.requiresConfirmation = false;
-    bot.clickWindow(13, 0, 0);
+
+    betterClick(13, 0, 0);
     await sleep(300);
-    bot.currentWindow.requiresConfirmation = false;
-    bot.clickWindow(10, 0, 0);
+
+    betterClick(10, 0, 0);
     await sleep(50);
   }
   async function claimSold() {
     bot.chat('/ah');
     await sleep(300);
     if (getWindowName(bot.currentWindow)?.includes('Auction House')) {
-      bot.currentWindow.requiresConfirmation = false;
-      bot.clickWindow(15, 0, 0);
+
+      betterClick(15, 0, 0);
       await sleep(300);
       if (getWindowName(bot.currentWindow)?.includes('Manage Auctions')) {
-        bot.currentWindow.requiresConfirmation = false;
+
         const items = bot.currentWindow?.slots;
         items.forEach(async (item, index) => {
           if (!item) return;
           const name = item?.value?.display?.value?.Name?.value?.toString();
           if (name?.includes('Claim')) {
-            bot.clickWindow(index, 0, 0);
+            betterClick(index, 0, 0);
             sleep(50);
             //currentlisted--;
             if (fullInv) {
@@ -1235,7 +1323,7 @@ async function start() {
           if (!item) return;
           const lore = item.nbt.value?.display?.value?.Lore?.value?.value?.toString();
           if (lore?.includes('Sold!')) {
-            bot.clickWindow(index, 0, 0);
+            betterClick(index, 0, 0);
           }
         });
       } else {
@@ -1310,7 +1398,7 @@ async function start() {
         setTimeout(async () => {
           for (i = 0; i < 4; i++) {
             if (getWindowName(bot.currentWindow)?.includes('BIN Auction View')) {
-              bot.clickWindow(31, 0, 0);
+              betterClick(31, 0, 0);
               //console.log(`Clicking bed`);
               await sleep(3);
             }
@@ -1389,7 +1477,7 @@ async function start() {
         setTimeout(async () => {
           for (i = 0; i < 5; i++) {
             if (getWindowName(bot.currentWindow)?.includes('BIN Auction View')) {
-              bot.clickWindow(31, 0, 0);
+              betterClick(31, 0, 0);
               await sleep(3);
             }
           }
@@ -1421,8 +1509,8 @@ async function start() {
     if (getWindowName(bot.currentWindow)?.includes('BIN Auction View')) {
       const item = bot.currentWindow?.slots[31]?.name;
       if (item?.includes('bed')) {
-        bot.currentWindow.requiresConfirmation = false;
-        bot.clickWindow(31, 0, 0);
+
+        betterClick(31, 0, 0);
       }
     }
   }, clickDelay);
@@ -1469,5 +1557,21 @@ async function start() {
   };
   ws.on('getInventory', sendInventoy);
   bot.on('windowOpen', sendInventoy);
+  async function itemLoad(slot) {
+    return new Promise((resolve, reject) => {
+      const interval = setInterval(() => {
+        const check = bot.currentWindow?.slots[slot];
+        if (check) {
+          clearInterval(interval);
+          resolve(check);
+        }
+      }, 1);
+
+      setTimeout(() => {
+        clearInterval(interval);
+        reject(new Error('Item didn\'t load in time :('));
+      }, 5000);
+    });
+  }
 }
 start();

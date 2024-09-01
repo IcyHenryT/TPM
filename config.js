@@ -18,6 +18,9 @@ const defaultConfig = `{
   //BAF Websocket, gives no captchas
   "useBafSocket": true,
 
+  //Skip is very fast but higher ban chance
+  "useSkip": true,
+
   //Requires prem+
   "usInstance": true,
 
@@ -60,9 +63,13 @@ const defaultConfig = `{
     //Don't list certain item tags
     "itemTags": [
       "HYPERION"
-    ]
+    ],
+
+    //Dont list any item with a skin or any skins
+    "skins": true
 
   },
+
   //Doesn't send your flips to /get_global_stats. Come on man I made a free macro and you can't even give me some data :( it's nothing like private
   "keepEverythingPrivate": false,
 

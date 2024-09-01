@@ -1,5 +1,5 @@
 const EventEmitter = require('events');
-const { logmc, debug, error } = require("./logger.js");
+const { logmc, debug, error, info } = require("./logger.js");
 const { sleep, formatNumber, noColorCodes, sendDiscord } = require("./utils.js");
 const axios = require('axios');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
@@ -97,7 +97,7 @@ function parseMessage(message) {
             ws.emit("messageText", text);
             return text;
         case "execute":
-            debug(JSON.stringify(msg));
+            debug(JSON.stringify(message));
             let execData = msg.data
             if (execData.includes('/cofl ping')) {
                 let dataParts = execData.slice(1, -1).split(' ');
@@ -106,7 +106,7 @@ function parseMessage(message) {
                 dataParts = '"' + dataParts.join(' ') + '"';
                 send(JSON.stringify({ type: 'ping', data: dataParts }));
             } else if (execData.includes('/cofl')) {
-                handleCommand(execData)
+                handleCommand(execData, true)
             } else {
                 const packets = getPackets();
                 if (!packets) return;
@@ -146,17 +146,19 @@ function send(msg, type = true) {
     websocket.send(msg)
     debug(`Sending ${msg}`)
 }
-function handleCommand(command) {
-    const args = command.split(' ');
-    const first = args[1];
+function handleCommand(command, execute = false) {
+    args = command.split(' ');
+    first = args[1];
     args.shift();
     args.shift();
+    const joined = args.join(' ')
+    if (execute) joined.replace(/"/g, "");
     send(
         JSON.stringify({
             type: first,
-            data: `"${args.join(' ')}"`
+            data: `"${joined}"`
         })
-    )
+    );
 }
 function sidListener(newConfig) {
     //console.log(`Sid listener go go go`);
@@ -210,18 +212,22 @@ function sendCaptcha(message) {
     let finished = [];
     const data = message.data;
     let i = 1;
+    let lastClick;
     captchaSolves = [];
     data.forEach((msg, index) => {
-        const text = msg.text;
+        const text = msg.text.replace(/[\uD83C\uDDE7\uD83C\uDDFE]/g, '').replace(/§./g, '');
         if (text === "\n") {
             finished.push(`| ${i}`);
             i++
-            captchaSolves.push(data[index - 6]?.onClick?.replace('/cofl captcha ', ''))
+            captchaSolves.push(lastClick)
         }
-        finished.push(text.replace(/[\uD83C\uDDE7\uD83C\uDDFE]/g, '').replace(/§./g, ''));
+        else if (text.trim() !== "") {
+            lastClick = data[index - 1]?.onClick?.replace('/cofl captcha ', '')
+        }
+        finished.push(text);
     })
     console.log(finished.join(''));
-    if (webhook) A(finished.join(''));
+    A(finished.join(''));
 }
 
 function A(finished) {

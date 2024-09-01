@@ -123,7 +123,7 @@ function makeTpmWebsocket() {
 
 makeTpmWebsocket();
 
-function sendFlip(auctionId, profit, price, bed, name, finder) {
+function sendFlip(auctionId, profit, price, bed, name, finder, buyspeed) {
     bought++;
     if (tws && tws.readyState === WebSocket.OPEN) {
         tws.send(JSON.stringify({
@@ -136,7 +136,8 @@ function sendFlip(auctionId, profit, price, bed, name, finder) {
                 profit: profit,
                 uuid: uuid,
                 auctionId: auctionId,
-                finder: finder
+                finder: finder,
+                buyspeed: buyspeed
             })
         }));
     }
