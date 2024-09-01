@@ -32,7 +32,7 @@ async function startWS(sid) {
         logmc('§aConnected to WebSocket server');
         if (webhook) {
             const embed = new MessageBuilder()
-                .setFooter(`The "Perfect" Macro - v1.2.0`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+                .setFooter(`The "Perfect" Macro - v1.3.1`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
                 .setTitle('Started flipping')
                 .addField('', `Logged in as \`${config.username}\``)
                 .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
@@ -40,7 +40,7 @@ async function startWS(sid) {
             sendDiscord(embed);
         }
         connected = true;
-        ws.emit('open', '')
+        ws.emit('open', '');
     });
 
     websocket.on('message', (message) => {
@@ -272,7 +272,7 @@ function checkCaptchaSolution(message) {
         const data = JSON.parse(msg.data);
         if (data.text.includes('Thanks for confirming that you are a real user')) {
             const embed = new MessageBuilder()
-                .setFooter(`The "Perfect" Macro - 1.2.0`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+                .setFooter(`The "Perfect" Macro - 1.3.1`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
                 .setTitle('Solved the captcha')
                 .addField('', `Lmao they thought you were real`)
                 .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
@@ -280,7 +280,7 @@ function checkCaptchaSolution(message) {
             sendDiscord(embed);
         } else if (data.text.includes("solved the captcha, but")) {
             const embed = new MessageBuilder()
-                .setFooter(`The "Perfect" Macro - 1.2.0`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+                .setFooter(`The "Perfect" Macro - 1.3.1`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
                 .setTitle('Solved the captcha')
                 .addField('', `Sadly there are more captchas`)
                 .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
