@@ -24,7 +24,7 @@ const { config, updateConfig } = require('./config.js');
 const nbt = require('prismarine-nbt');
 const { sendFlip, giveTheFunStuff, updateSold } = require('./tpmWebsocket.js');
 
-let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip;
+let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip, showBed;
 
 function testign() {
   if (config.username.trim() === '') {
@@ -110,10 +110,12 @@ percentOfTarget = config.percentOfTarget;
 relist = config.relist;
 ownAuctions = config.ownAuctions;
 useSkip = config.useSkip;
+showBed = config.showBed || false; 
 badFinders = doNotList?.finders ? doNotList?.finders : ['USER'];
 dontListProfitOver = normalNumber(doNotList?.profitOver) ? normalNumber(doNotList?.profitOver) : 50_000_000;
 dontListItems = doNotList?.itemTags ? doNotList?.itemTags : ['HYPERION'];
 dontListSkins = doNotList?.skins || true;
+
 let ping = "";
 if (discordid) ping = `<@${discordid}>`;
 let lastSentCookie = 0;
@@ -684,10 +686,8 @@ async function start() {
         firstGui = Date.now();
         const item = await itemLoad(31);
         const itemName = item.name;
-        //console.log(`Item found ${itemName}`);
         switch (itemName) {
           case "gold_nugget":
-            // = false;
             debug(`Clicking nugget ${windowID}`)
             packets.click(31, windowID, 371);
             if (useSkip) packets.click(11, nextWindowID, 159);
@@ -1147,7 +1147,7 @@ async function start() {
         error(`Didn't find ${item} in ${JSON.stringify(webhookPricing)} WEBHOOK Please report this to icyhenryt`);
         return;
       }
-      const itemBed = webhookPricing[item].bed;
+      const itemBed = showBed ? webhookPricing[item].bed : "";
       const auctionUrl = `https://sky.coflnet.com/auction/${webhookPricing[item].auctionId}`;
       const profit = utils.IHATETAXES(webhookPricing[item].target) - utils.onlyNumbers(price);
       //console.log("purse test", await getPurse(bot), "price", price);
@@ -1157,7 +1157,7 @@ async function start() {
           const embed = new MessageBuilder()
             .setFooter(`TPM - Found by ${nicerFinders(webhookPricing[item].finder)} - Purse: ${purse} `, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
             .setTitle('Item purchased')
-            .addField('', `Bought [\`\`${utils.noColorCodes(match1[1])}\`\`](${auctionUrl}) for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) in \`\`${buyspeed}ms\`\``)
+            .addField('', `Bought [\`\`${utils.noColorCodes(match1[1])}\`\`](${auctionUrl}) for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) in \`\`${buyspeed}ms\`\` ${itemBed}`)
             .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
             .setColor(2615974);
           sendDiscord(embed)
@@ -1173,7 +1173,7 @@ async function start() {
                 fields: [
                   {
                     name: '',
-                    value: `Bought [\`\`${utils.noColorCodes(match1[1])}\`\`](${auctionUrl}) for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) in \`\`${buyspeed}ms\`\``,
+                    value: `Bought [\`\`${utils.noColorCodes(match1[1])}\`\`](${auctionUrl}) for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) in \`\`${buyspeed}ms\`\` ${itemBed}`,
                   }
                 ],
                 thumbnail: {
@@ -1190,7 +1190,7 @@ async function start() {
             const embed = new MessageBuilder()
               .setFooter(`TPM - Found by ${nicerFinders(webhookPricing[item].finder)} - Purse: ${purse} `, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
               .setTitle('LEGENDARY FLIP WOOOOO!!!')
-              .addField('', `Bought [\`\`${utils.noColorCodes(match1[1])}\`\`](${auctionUrl}) for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) in \`\`${buyspeed}ms\`\``)
+              .addField('', `Bought [\`\`${utils.noColorCodes(match1[1])}\`\`](${auctionUrl}) for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) in \`\`${buyspeed}ms\`\` ${itemBed}`)
               .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
               .setColor(16629250);
             sendDiscord(embed)

@@ -5,6 +5,7 @@ const axios = require('axios');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
 let { config, updateConfig } = require('./config.js');
 const { getPackets } = require('./packetStuff.js');
+const { version } = require('./package.json');
 let webhook;
 let id = config.discordID;
 const ws = new EventEmitter();
@@ -32,7 +33,7 @@ async function startWS(sid) {
         logmc('§aConnected to WebSocket server');
         if (webhook) {
             const embed = new MessageBuilder()
-                .setFooter(`The "Perfect" Macro - v1.3.1`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+                .setFooter(`The "Perfect" Macro - v${version}`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
                 .setTitle('Started flipping')
                 .addField('', `Logged in as \`${config.username}\``)
                 .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
@@ -106,7 +107,11 @@ function parseMessage(message) {
                 dataParts = '"' + dataParts.join(' ') + '"';
                 send(JSON.stringify({ type: 'ping', data: dataParts }));
             } else if (execData.includes('/cofl')) {
-                handleCommand(execData, true)
+                if (execData.includes('loadconfig')) {
+                    execData = execData.replace(/"/g, '');
+                }
+                debug(`Handling command |${execData}|`);
+                handleCommand(execData);
             } else {
                 const packets = getPackets();
                 if (!packets) return;
@@ -146,13 +151,12 @@ function send(msg, type = true) {
     websocket.send(msg)
     debug(`Sending ${msg}`)
 }
-function handleCommand(command, execute = false) {
+function handleCommand(command) {
     args = command.split(' ');
     first = args[1];
     args.shift();
     args.shift();
-    const joined = args.join(' ')
-    if (execute) joined.replace(/"/g, "");
+    const joined = args.join(' ');
     send(
         JSON.stringify({
             type: first,
@@ -272,7 +276,7 @@ function checkCaptchaSolution(message) {
         const data = JSON.parse(msg.data);
         if (data.text.includes('Thanks for confirming that you are a real user')) {
             const embed = new MessageBuilder()
-                .setFooter(`The "Perfect" Macro - 1.3.1`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+                .setFooter(`The "Perfect" Macro - v${version}`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
                 .setTitle('Solved the captcha')
                 .addField('', `Lmao they thought you were real`)
                 .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
@@ -280,7 +284,7 @@ function checkCaptchaSolution(message) {
             sendDiscord(embed);
         } else if (data.text.includes("solved the captcha, but")) {
             const embed = new MessageBuilder()
-                .setFooter(`The "Perfect" Macro - 1.3.1`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+                .setFooter(`The "Perfect" Macro - v${version}`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
                 .setTitle('Solved the captcha')
                 .addField('', `Sadly there are more captchas`)
                 .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
