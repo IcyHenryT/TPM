@@ -5,7 +5,7 @@ const axios = require('axios');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
 let { config, updateConfig } = require('./config.js');
 const { getPackets } = require('./packetStuff.js');
-const { version } = require('./package.json');
+const version = '1.3.2';
 let webhook;
 let id = config.discordID;
 const ws = new EventEmitter();
