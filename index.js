@@ -22,9 +22,9 @@ const { startWS, send, handleCommand, ws, sidListener, solveCaptcha } = require(
 let lastAction = Date.now();
 const { config, updateConfig } = require('./config.js');
 const nbt = require('prismarine-nbt');
-const { sendFlip, giveTheFunStuff, updateSold } = require('./tpmWebsocket.js');
+const { sendFlip, giveTheFunStuff, updateSold, sendFlipFound } = require('./tpmWebsocket.js');
 
-let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip, showBed;
+let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip, showBed, privacy;
 
 function testign() {
   if (config.username.trim() === '') {
@@ -101,7 +101,8 @@ session = config.session;
 bedSpam = config.bedSpam;
 discordid = config.discordID;
 //discordbot = config.discordBotToken;
-delay = config.delay;
+useSkip = config.useSkip;
+delay = useSkip ? config.delay + 50 : config.delay;
 clickDelay = config.clickDelay;
 waittime = config.waittime;
 usingBaf = config.useBafSocket;
@@ -109,12 +110,12 @@ usInstance = config.usInstance;
 percentOfTarget = config.percentOfTarget;
 relist = config.relist;
 ownAuctions = config.ownAuctions;
-useSkip = config.useSkip;
-showBed = config.showBed || false; 
+showBed = config.showBed || false;
 badFinders = doNotList?.finders ? doNotList?.finders : ['USER'];
 dontListProfitOver = normalNumber(doNotList?.profitOver) ? normalNumber(doNotList?.profitOver) : 50_000_000;
 dontListItems = doNotList?.itemTags ? doNotList?.itemTags : ['HYPERION'];
 dontListSkins = doNotList?.skins || true;
+privacy = config.keepEverythingPrivate;
 
 let ping = "";
 if (discordid) ping = `<@${discordid}>`;
@@ -129,7 +130,6 @@ webhookPricing = {};
 
 let privacySettings;
 
-let lastGui = 0;
 let targetQueue = [];
 let idQueue = [];
 let finderQueue = [];
@@ -691,6 +691,7 @@ async function start() {
             debug(`Clicking nugget ${windowID}`)
             packets.click(31, windowID, 371);
             if (useSkip) packets.click(11, nextWindowID, 159);
+            lastAction = firstGui;
             break;
           case 'poisonous_potato':
             logmc(`§6[§bTPM§6] Can't afford flip, closing GUI.`)
@@ -804,8 +805,10 @@ async function start() {
     const current = stateManger.get();
     if (bot.state !== old) debug(`Bot state updated: ${bot.state}`);
     old = bot.state;
-    if (current && bot.state === null && Date.now() - lastAction > delay) {
+    const time = Date.now();
+    if (current && bot.state === null && time - lastAction > delay) {
       const command = current.command;
+      lastAction = time;
       if (command === 'claim') {
         bot.state = current.state;
         bot.state = 'claiming';
@@ -827,8 +830,8 @@ async function start() {
         if (fullInv) {
           logmc("§6[§bTPM§6] §cNot attempting to relist because your inventory is full. You will need to log in and clear your inventory to continue")
           bot.state = null;
-        } else if (Date.now() - lastRelistCheck > 10000) {
-          lastRelistCheck = Date.now()
+        } else if (lastAction - lastRelistCheck > 10000) {
+          lastRelistCheck = lastAction;
           await sleep(10000)
           if (relistCheck(currentlisted, totalslots, bot.state)) {
             bot.state = "listing";
@@ -867,8 +870,7 @@ async function start() {
         }
       }
       stateManger.next();
-      lastAction = Date.now();
-      debug(`Turning state into ${bot.state} and running ${toRun}`);
+      debug(`Turning state into ${bot.state} and running ${toRun} at ${lastAction}`);
     }
   }, delay);
   bot.once('spawn', async () => {
@@ -878,7 +880,7 @@ async function start() {
     bot.state = 'moving';
     bot.chat('/play sb');
     await sleep(5000);
-    bot.chat('/is');//TODO change  to IS
+    bot.chat('/is');//TODO change to IS
     setInterval(() => {
       const board = bot.scoreboard?.sidebar?.items;
       if (!board) {
@@ -1501,7 +1503,8 @@ async function start() {
         }
       }, 50);
     }
-    debug(`Found flip ${itemName} uuid ${auctionID}`)
+    debug(`Found flip ${itemName} uuid ${auctionID}`);
+    sendFlipFound(auctionID);
   });
   setInterval(() => {
     //BED SPAM

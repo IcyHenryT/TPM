@@ -171,4 +171,16 @@ function giveTheFunStuff(BOT, handleThoseCommands) {
     handleCommand = handleThoseCommands;
 }
 
-module.exports = { sendFlip, giveTheFunStuff, updateSold };
+function sendFlipFound(auctionID) {//Allows for winrate
+    if (private) return;
+    if (tws && tws.readyState === WebSocket.OPEN) {
+        tws.send(JSON.stringify({
+            type: "flipFound",
+            data: JSON.stringify({
+                id: auctionID
+            })
+        }));
+    }
+}
+
+module.exports = { sendFlip, giveTheFunStuff, updateSold, sendFlipFound };
