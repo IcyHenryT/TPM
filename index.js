@@ -5,10 +5,6 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
-//const { once } = require('events');
-const registry = require('prismarine-registry')('1.8.9');
-const ChatMessage = require('prismarine-chat')(registry);
-const { check, Window } = require('./window.js');
 const utils = require(`./utils.js`);
 const { randomUUID } = require('crypto');
 const axios = require('axios');
@@ -688,9 +684,11 @@ async function start() {
         const itemName = item.name;
         switch (itemName) {
           case "gold_nugget":
-            debug(`Clicking nugget ${windowID}`)
             packets.click(31, windowID, 371);
-            if (useSkip) packets.click(11, nextWindowID, 159);
+            if (useSkip) {
+              packets.click(11, nextWindowID, 159);
+              debug(`Skip is on! found ${item} in ${windowID}`)
+            }
             lastAction = firstGui;
             break;
           case 'poisonous_potato':
@@ -851,8 +849,13 @@ async function start() {
             bedFailed = true;
             debug('Bed is now failed')
             currentOpen = ahid
-            bot.chat(`/viewauction ${ahid}`);
-            toRun = `/viewauction ${ahid}`
+            if (!bot.currentWindow) {
+              bot.chat(`/viewauction ${ahid}`);
+              toRun = `/viewauction ${ahid}`
+            } else {
+              debug(`A window is open!!! Not opening from queue`);
+              return;
+            }
             relistObject[command] = {
               id: ahid,
               target: ahhhhh.target,
@@ -1344,7 +1347,7 @@ async function start() {
     let auctionID;
     let currentTime = Date.now();
     if (usingBaf) {
-      if (!bot.state && currentTime - lastAction > delay) {
+      if (!bot.state && currentTime - lastAction > delay && !bot.currentWindow) {
         lastLeftBuying = currentTime;
         bot.state = 'buying';
         auctionID = data.id;
@@ -1401,7 +1404,6 @@ async function start() {
           for (i = 0; i < 4; i++) {
             if (getWindowName(bot.currentWindow)?.includes('BIN Auction View')) {
               betterClick(31, 0, 0);
-              //console.log(`Clicking bed`);
               await sleep(3);
             }
           }
@@ -1415,7 +1417,7 @@ async function start() {
         }, 5000);
       }
     } else {
-      if (!bot.state && currentTime - lastAction > delay) {
+      if (!bot.state && currentTime - lastAction > delay && !bot.currentWindow) {
         auctionID = data.id;
         lastLeftBuying = Date.now();
         bot.state = 'buying';
