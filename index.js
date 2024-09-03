@@ -792,7 +792,7 @@ async function start() {
       error("Bot state issue detected, resetting state and hopefully fixing queue lock issue")
       await makePackets(bot._client);
       packets = getPackets();
-      if (bot.currentWindow && !useSkip) bot.closeWindow(bot.currentWindow);
+      if (bot.currentWindow && (!useSkip || getWindowName(bot.currentWindow) !== "BIN Auction View")) bot.closeWindow(bot.currentWindow);
       await sleep(200)
       bot.state = null;
     }
@@ -1097,7 +1097,7 @@ async function start() {
           if (!badFinders?.includes(lastPurchasedFinder)) {
             if (!dontListItems.includes(itemTag)) {
               if (profit < dontListProfitOver && profit > 0) {
-                if (dontListSkins && (!item.includes('✦') || !item.toLowerCase().includes('skin'))) {
+                if (dontListSkins && (!item.includes('✦') && !item.toLowerCase().includes('skin'))) {
                   purchasedFinders.push(lastPurchasedFinder);
                   setTimeout(async () => {
                     if (bot.state === null) {
@@ -1378,7 +1378,14 @@ async function start() {
       } else {
         auctionID = data.id;
         itemName = data.itemName.replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "");
-        logmc(`§6[§bTPM§6] §aAdding ${itemName}§3 to the pipeline because state is ${bot.state}!`);
+        let reasons = [];
+        if (bot.state) reasons.push(`bot state is ${bot.state}`);
+        if (bot.currentWindow) reasons.push(`${getWindowName(bot.currentWindow)} is open`);
+        if (currentTime - lastAction < delay) reasons.push(`the last action was too recent`);
+        if (bot.state !== 'moving') {
+          logmc(`§3Adding ${itemName}§3 to the pipeline because ${reasons.join(' and ')}!`);
+          stateManger.add(weirdName, 69, 'buying');
+        }
         stateManger.add(noColorCodes(itemName), 69, 'buying');
       }
       webhookPricing[noColorCodes(itemName)] = {
@@ -1452,8 +1459,12 @@ async function start() {
         auctionID = data.id;
         itemName = data.auction.itemName;
         var weirdName = noColorCodes(itemName).replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "");
+        let reasons = [];
+        if (bot.state) reasons.push(`bot state is ${bot.state}`);
+        if (bot.currentWindow) reasons.push(`${getWindowName(bot.currentWindow)} is open`);
+        if (currentTime - lastAction < delay) reasons.push(`the last action was too recent`);
         if (bot.state !== 'moving') {
-          logmc(`§3Adding ${itemName}§3 to the pipeline because state is ${bot.state}!`);
+          logmc(`§3Adding ${itemName}§3 to the pipeline because ${reasons.join(' and ')}!`);
           stateManger.add(weirdName, 69, 'buying');
         }
       }
