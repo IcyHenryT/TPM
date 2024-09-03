@@ -98,7 +98,7 @@ bedSpam = config.bedSpam;
 discordid = config.discordID;
 //discordbot = config.discordBotToken;
 useSkip = config.useSkip;
-delay = useSkip ? config.delay + 50 : config.delay;
+delay = useSkip ? config.delay + 150 : config.delay;
 clickDelay = config.clickDelay;
 waittime = config.waittime;
 usingBaf = config.useBafSocket;
@@ -682,12 +682,13 @@ async function start() {
         firstGui = Date.now();
         const item = await itemLoad(31);
         const itemName = item.name;
+        debug(`found ${item} in ${windowID}`);
         switch (itemName) {
           case "gold_nugget":
             packets.click(31, windowID, 371);
             if (useSkip) {
               packets.click(11, nextWindowID, 159);
-              debug(`Skip is on! found ${item} in ${windowID}`)
+              debug(`Skip is on!`)
             }
             lastAction = firstGui;
             break;
@@ -791,7 +792,7 @@ async function start() {
       error("Bot state issue detected, resetting state and hopefully fixing queue lock issue")
       await makePackets(bot._client);
       packets = getPackets();
-      if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+      if (bot.currentWindow && !useSkip) bot.closeWindow(bot.currentWindow);
       await sleep(200)
       bot.state = null;
     }
@@ -941,7 +942,7 @@ async function start() {
         }
         logmc(`§6[§bTPM§6] §3Auction bought in ${buyspeed}ms`);
         bot.state = null;
-        if (bot.currentWindow && !closedGui) bot.closeWindow(bot.currentWindow);
+        if (bot.currentWindow && !closedGui && !useSkip) bot.closeWindow(bot.currentWindow);
         closedGui = true;
         break;
       case "This auction wasn't found!":
@@ -950,7 +951,7 @@ async function start() {
       case "The auctioneer has closed this auction!":
       case "You don't have enough coins to afford this bid!":
         bot.state = null;
-        if (bot.currentWindow && !closedGui) bot.closeWindow(bot.currentWindow);
+        if (bot.currentWindow && !closedGui && !useSkip) bot.closeWindow(bot.currentWindow);
         closedGui = true;
         break;
       case '/limbo for more information.':
