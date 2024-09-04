@@ -616,7 +616,6 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
   }
 }
 
-
 if (!session) {
   session = randomUUID();
   config.session = session;
@@ -682,7 +681,7 @@ async function start() {
         firstGui = Date.now();
         const item = await itemLoad(31);
         const itemName = item.name;
-        debug(`found ${item} in ${windowID}`);
+        debug(`found ${itemName} in window ID ${windowID}`);
         switch (itemName) {
           case "gold_nugget":
             packets.click(31, windowID, 371);
@@ -695,24 +694,29 @@ async function start() {
           case 'poisonous_potato':
             logmc(`§6[§bTPM§6] Can't afford flip, closing GUI.`)
             bot.closeWindow(bot.currentWindow);
+            lastAction = firstGui;
             bot.state = null;
             break;
           case 'potato':
             logmc(`§6[§bTPM§6] Potatoed, closing GUI.`)
             bot.closeWindow(bot.currentWindow);
+            lastAction = firstGui;
             bot.state = null;
             break;
           case 'feather':
             logmc(`§6[§bTPM§6] Potatoed, closing GUI.`)
             bot.closeWindow(bot.currentWindow);
+            lastAction = firstGui;
             bot.state = null;
             break;
           case 'gold_block':
             betterClick(31, 0, 0);
+            lastAction = firstGui;
             bot.state = null;
             break;
           case "bed":
-            logmc(`§6[§bTPM§6] Found a bed!`)
+            logmc(`§6[§bTPM§6] Found a bed!`);
+            lastAction = firstGui;
             break;
         }
       } else if (windowName === '{"italic":false,"extra":[{"text":"Confirm Purchase"}],"text":""}') {
@@ -842,15 +846,15 @@ async function start() {
         }
       } else {
         try {
-          bot.state = current.state;
           const ahhhhh = webhookPricing[command];
           debug(JSON.stringify(ahhhhh));
           if (ahhhhh) {//crash :(
             const ahid = ahhhhh.auctionId
-            bedFailed = true;
-            debug('Bed is now failed')
-            currentOpen = ahid
+            bot.state = current.state;
             if (!bot.currentWindow) {
+              bedFailed = true;
+              debug('Bed is now failed')
+              currentOpen = ahid
               bot.chat(`/viewauction ${ahid}`);
               toRun = `/viewauction ${ahid}`
             } else {
@@ -972,7 +976,7 @@ async function start() {
         break;
       case "You cannot view this auction!":
         const time = Date.now();
-        if (time - lastSentCookie > 60_000) {
+        if (time - lastSentCookie > 300_000) {
           lastSentCookie = time;
           if (webhook) {
             try {
@@ -1074,8 +1078,6 @@ async function start() {
       }
       sendScoreboard();
     }
-
-
 
     const regex1 = /You purchased (.+?) for ([\d,]+) coins!/;
     const match1 = text.match(regex1);
@@ -1384,9 +1386,8 @@ async function start() {
         if (currentTime - lastAction < delay) reasons.push(`the last action was too recent`);
         if (bot.state !== 'moving') {
           logmc(`§3Adding ${itemName}§3 to the pipeline because ${reasons.join(' and ')}!`);
-          stateManger.add(weirdName, 69, 'buying');
+          stateManger.add(noColorCodes(itemName), 69, 'buying');
         }
-        stateManger.add(noColorCodes(itemName), 69, 'buying');
       }
       webhookPricing[noColorCodes(itemName)] = {
         target: data.target,
@@ -1576,12 +1577,15 @@ async function start() {
   bot.on('windowOpen', sendInventoy);
   async function itemLoad(slot) {
     return new Promise((resolve, reject) => {
+      let index = 1;
       const interval = setInterval(() => {
         const check = bot.currentWindow?.slots[slot];
         if (check) {
           clearInterval(interval);
           resolve(check);
+          debug(`Found item on ${index}`);
         }
+        index++
       }, 1);
 
       setTimeout(() => {
