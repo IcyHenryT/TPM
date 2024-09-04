@@ -687,7 +687,7 @@ async function start() {
             packets.click(31, windowID, 371);
             if (useSkip) {
               packets.click(11, nextWindowID, 159);
-              debug(`Skip is on!`)
+              debug(`Skip is on!`);
             }
             lastAction = firstGui;
             break;
@@ -796,9 +796,13 @@ async function start() {
       error("Bot state issue detected, resetting state and hopefully fixing queue lock issue")
       await makePackets(bot._client);
       packets = getPackets();
-      if (bot.currentWindow && (!useSkip || getWindowName(bot.currentWindow) !== "BIN Auction View")) bot.closeWindow(bot.currentWindow);
+      if (bot.currentWindow) {
+        bot.closeWindow(bot.currentWindow);
+        debug(`Got stuck on ${getWindowName(bot.currentWindow)}`);
+      }
       await sleep(200)
       bot.state = null;
+      lastAction = Date.now();
     }
   }, 250);
   let old = bot.state;
@@ -1272,9 +1276,11 @@ async function start() {
           break;
         case "/fc":
           handleCommand(`/cofl chat ${message}`);
+          break;
         case "/ping":
         case "/getping":
           sendPingStats(ws, handleCommand, bot, soldItems, boughtItems);
+          break;
         case '!c':
           solveCaptcha(args[1]);
           break;
@@ -1287,10 +1293,8 @@ async function start() {
     bot.chat('/ah');
     await sleep(300);
     if (!bot.currentWindow) return;
-
     betterClick(13, 0, 0);
     await sleep(300);
-
     betterClick(10, 0, 0);
     await sleep(50);
   }
@@ -1527,7 +1531,6 @@ async function start() {
     if (getWindowName(bot.currentWindow)?.includes('BIN Auction View')) {
       const item = bot.currentWindow?.slots[31]?.name;
       if (item?.includes('bed')) {
-
         betterClick(31, 0, 0);
       }
     }

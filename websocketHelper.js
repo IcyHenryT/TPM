@@ -5,7 +5,7 @@ const axios = require('axios');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
 let { config, updateConfig } = require('./config.js');
 const { getPackets } = require('./packetStuff.js');
-const version = '1.3.7';
+const version = '1.3.8';
 let webhook;
 let id = config.discordID;
 const ws = new EventEmitter();
@@ -148,8 +148,8 @@ function send(msg, type = true) {
         if (type) logmc(`§6[§bTPM§6] §cCan't send to websocket because not connected`);
         return;
     }
-    websocket.send(msg)
-    debug(`Sending ${msg}`)
+    websocket.send(msg);
+    if (type) debug(`Sending ${msg}`);
 }
 function handleCommand(command) {
     args = command.split(' ');

@@ -33,9 +33,9 @@ const timelog = `${directoryPath}/${time}.log`;
 
 function resetLogFile(logFilePath) {
     if (!fs.existsSync(logFilePath)) {
-        fs.writeFileSync(logFilePath, ''); 
+        fs.writeFileSync(logFilePath, '');
     } else {
-        fs.truncateSync(logFilePath, 0); 
+        fs.truncateSync(logFilePath, 0);
     }
 }
 
@@ -93,7 +93,7 @@ const plainFormat = printf(({ message }) => {
     message = message.replace(ansiRegex, '');
     // Keep only the characters that match the regex
     message = message.match(regex)?.join('') || '';
-    return message;
+    return `${Date.now()}: ${message}`;
 });
 
 const logger = createLogger({

@@ -19,7 +19,7 @@ const defaultConfig = `{
   "useBafSocket": true,
 
   //Skip is very fast but higher ban chance
-  "useSkip": true,
+  "useSkip": false,
 
   //Requires prem+
   "usInstance": true,
