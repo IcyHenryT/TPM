@@ -1,12 +1,14 @@
 const fs = require('fs');
 const path = require('path');
-const { debug } = require('./logger.js');
+const { debug, logmc, error } = require('./logger.js');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
 const { config } = require('./config.js');
+const { getPackets } = require('./packetStuff.js');
+const axios = require('axios');
 
-
+let tries = 0;
 let webhook = config.webhook;
-if (webhook) {
+if (webhook && !Array.isArray(webhook)) {
     webhook = new Webhook(webhook);
     webhook.setUsername('TPM');
     webhook.setAvatar('https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless');
@@ -341,15 +343,210 @@ async function sendPingStats(ws, handleCommand, bot, sold, bought) {
 async function sendDiscord(embed, attempt = 0) {
     if (webhook) {
         try {
-            await webhook.send(embed);
+            if (Array.isArray(webhook)) {
+                webhook.forEach(async (hook) => {
+                    sender = new Webhook(hook);
+                    sender.setUsername('TPM');
+                    sender.setAvatar('https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless');
+                    await sender.send(embed);
+                })
+            } else {
+                await webhook.send(embed);
+            }
         } catch {
             if (attempt < 3) {
                 await sleep(5000)
-                sendDiscord(embed, attempt++)
+                sendDiscord(embed, attempt + 1);
             }
         }
     }
 }
 
+async function putInAh(bot, slot = 63) {
+    debug("starting put in ah")
+    if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+    await sleep(150)
+    bot.chat("/ah")
+    await betterOnce(bot, 'windowOpen')
+    betterClick(slot, 0, 0, bot)
+    await sleep(250)
+    if (getWindowName(bot.currentWindow)?.includes('Auction House') || getWindowName(bot.currentWindow)?.includes('Co-op Auction House')) {
+        logmc("§6[§bTPM§6] §cThere was already an item in the creation slot, attempting to remove it [Auto Cookie]")
+        await removeFromAh(bot, "moving")
+        if (tries < 2) {
+            tries++
+            await putInAh(bot, slot + 1)
+            return;
+        } else {
+            logmc("§6[§bTPM§6] §cIssue with removing item from ah slot likely because your inv is full so giving up rip bozo (if your inv isnt full report pls :D)")
+            return;
+        }
+    }
+    if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+    await sleep(150)
+    tries = 0;
+    return;
+}
+
+async function removeFromAh(bot, botstate) {
+
+    const messages = {
+        moving: {
+            removedItem: "§6[§bTPM§6] §3Removed item from slot [Auto Cookie]",
+            failedCreateSlot: "§6[§bTPM§6] §cFailed to find create slot :( leaving auto cookie there's an item in the slot [Auto Cookie]",
+            failedBinAuction: (windowName) => `§6[§bTPM§6] §cFailed to open BIN Auction, got ${windowName}. Leaving auto cookie and there's an item in the slot ): [Auto Cookie]`,
+            failedManageAuctions: (windowName) => `§6[§bTPM§6] §cFailed to open Manage auctions, got ${windowName}. Leaving relist and there's an item in the slot ): [Auto Cookie]`,
+            foundCreateSlot: (slot) => `Found create slot ${slot} [Auto Cookie]`,
+        },
+        listing: {
+            removedItem: "§6[§bTPM§6] §3Removed item from slot [Relist]",
+            failedCreateSlot: "§6[§bTPM§6] §cFailed to find create slot :( leaving relist and there's an item in the slot [Relist]",
+            failedBinAuction: (windowName) => `§6[§bTPM§6] §cFailed to open BIN Auction, got ${windowName}. Leaving relist and there's an item in the slot ): [Relist]`,
+            failedManageAuctions: (windowName) => `§6[§bTPM§6] §cFailed to open Manage auctions, got ${windowName}. Leaving relist and there's an item in the slot ): [Relist]`,
+            foundCreateSlot: (slot) => `Found create slot ${slot} [Relist]`,
+        }
+    };
+    debug("starting remove from ah")
+    if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+    await sleep(150)
+    bot.chat("/ah")
+    await betterOnce(bot, 'windowOpen')
+    betterClick(15, 0, 0, bot)
+    await betterOnce(bot, 'windowOpen')
+    if (getWindowName(bot.currentWindow)?.includes('Create BIN Auction') || getWindowName(bot.currentWindow)?.includes('Create Auction')) {
+        if (getWindowName(bot.currentWindow)?.includes('Create Auction')) {
+            await sleep(250);
+            betterClick(48, 0, 0, bot)
+            await sleep(250);
+        }
+        betterClick(13, 0, 0, bot)
+        await sleep(250)
+        if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+        logmc(messages[botstate].removedItem)
+        return;
+    } else if (getWindowName(bot.currentWindow)?.includes('Manage Auctions')) {
+        let createSlot = bot.currentWindow.slots.find(obj => obj?.nbt?.value?.display?.value?.Name?.value?.includes('Create Auction'));
+        createSlot = createSlot.slot;
+        debug(messages[botstate].foundCreateSlot(createSlot));
+        if (!createSlot) {
+            logmc(messages[botstate].failedCreateSlot)
+            if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+            return;
+        } else {
+            betterClick(createSlot, 0, 0, bot)
+            await betterOnce(bot, 'windowOpen');
+            await sleep(250);
+            if (getWindowName(bot.currentWindow)?.includes('Create BIN Auction')) {
+                betterClick(13, 0, 0, bot)
+                await sleep(250)
+                if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+                logmc(messages[botstate].removedItem)
+                return;
+            } else {
+                logmc(messages[botstate].failedBinAuction(getWindowName(bot.currentWindow)));
+                if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+                return;
+            }
+        }
+    } else {
+        logmc(messages[botstate].failedManageAuctions(getWindowName(bot.currentWindow)));
+        if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+        return;
+    }
+}
+
+
+async function omgCookie(bot, cookieTime) {
+
+    if (cookieTime == 0) {
+        return 0;
+    }
+
+    let emptyInvSlot = false;
+    let itemCount = 0;
+    bot.chat("/ah")
+    await betterOnce(bot, 'windowOpen')
+    bot?.inventory?.slots?.forEach((item, index) => {
+        //console.log(bot.inventory?.slots[index]?.name,index)
+        if (index >= 36 && index <= 43) {
+            debug(item?.name, index)
+            if (item != null) {
+                itemCount++;
+                debug("item count", itemCount)
+            }
+        }
+    });
+    if (itemCount < 8) {
+        debug("Found an empty slot in the hotbar");
+        emptyInvSlot = true;
+    } else {
+        debug("No empty slots in the hotbar");
+        emptyInvSlot = false;
+    }
+    if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+    await betterOnce(bot, 'windowClose')
+    await sleep(150)
+
+    if (emptyInvSlot == false) { await putInAh(bot) }
+
+    bot.chat("/bz booster cookie")
+    debug("bazzar cookie")
+    await betterOnce(bot, 'windowOpen')
+    await sleep(100)
+    betterClick(11, 0, 0, bot) //click cookie
+    debug("clicked cookie")
+    await betterOnce(bot, 'windowOpen')
+    betterClick(10, 0, 0, bot) //click instant buy
+    debug("clicked instant buy")
+    await betterOnce(bot, 'windowOpen')
+    betterClick(10, 0, 0, bot) //confirm instant buy
+    debug("confirmed instant buy")
+    await sleep(250)
+
+    if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+    await sleep(150)
+    let cookieIndex = bot.inventory.findInventoryItem('cookie').slot
+    cookieIndex = (cookieIndex >= 36 && cookieIndex <= 43) ? (cookieIndex - 36) % 8 : cookieIndex
+    debug("cookie index", cookieIndex)
+    if (!cookieIndex || cookieIndex > 9) {
+        logmc(`§6[§bTPM§6] §cFailed to use the cookie in slot ${cookieIndex}`);
+        return;
+    }
+    bot.setQuickBarSlot(cookieIndex);
+    await sleep(50);
+    bot.activateItem();
+
+    await betterOnce(bot, 'windowOpen')
+    betterClick(11, 0, 0, bot)
+    debug("activated cookie")
+    await betterOnce(bot, 'windowClose')
+
+    await sleep(250)
+    if (emptyInvSlot == 0) await removeFromAh(bot, "moving")
+    await sleep(500)
+
+    return cookieTime + 100;
+
+}
+
+function betterClick(slot, mode1 = 0, mode2 = 0, bot) {
+    if (!bot.currentWindow) {
+        debug(`No window found for clicking ${slot}`);
+        return;
+    }
+    let packets = getPackets();
+    if (!packets) {
+        error(`Packets weren't made for utils betterclick`);
+    }
+    packets.bump();
+    bot.currentWindow.requiresConfirmation = false;
+    bot.clickWindow(slot, mode1, mode2);
+}
+
+async function getCookiePrice() {
+    try { return Math.round((await axios.get('https://api.hypixel.net/v2/skyblock/bazaar')).data.products.BOOSTER_COOKIE.quick_status.buyPrice + 5_000_000) } catch (e) { error(e) };
+}
+
+
 const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
-module.exports = { noColorCodes, sendDiscord, randomWardenDye, sendPingStats, onlyNumbers, normalizeDate, normalNumber, IHATETAXES, formatNumber, sleep, checkHypixelPing, TheBig3, checkCoflDelay, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders, betterOnce, checkCoflPing }
+module.exports = { noColorCodes, sendDiscord, randomWardenDye, sendPingStats, onlyNumbers, normalizeDate, normalNumber, IHATETAXES, formatNumber, sleep, checkHypixelPing, TheBig3, checkCoflDelay, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders, betterOnce, checkCoflPing, omgCookie, removeFromAh, getCookiePrice }

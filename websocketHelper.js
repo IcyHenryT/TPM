@@ -234,9 +234,9 @@ function sendCaptcha(message) {
     A(finished.join(''));
 }
 
-function A(finished) {
+async function A(finished) {
     try {
-        axios.post(config.webhook, {
+        const webhhookData = {
             username: "TPM",
             avatar_url: "https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless",
             content: ping,
@@ -245,7 +245,14 @@ function A(finished) {
                 color: 65280,
                 description: `\`\`\`\n${finished}\n\`\`\``,
             }]
-        })
+        }
+        if (Array.isArray(config.webhook)) {
+            config.webhook.forEach(async hook => {
+                await axios.post(hook, webhhookData);
+            })
+        } else {
+            await axios.post(config.webhook, webhhookData);
+        }
     } catch (e) {
         console.error(`Failed captcha sending ${e}`)
     }

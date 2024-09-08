@@ -9,8 +9,8 @@ const utils = require(`./utils.js`);
 const { randomUUID } = require('crypto');
 const axios = require('axios');
 const stateManger = require(`./state.js`);
-const { noColorCodes, sendDiscord, nicerFinders, normalizeDate, TheBig3, IHATETAXES, randomWardenDye, formatNumber, sleep, getWindowName, getPurse, relistCheck, addCommasToNumber, betterOnce, normalNumber, sendPingStats } = require('./utils.js');
-const { Webhook, MessageBuilder } = require('discord-webhook-node');
+const { noColorCodes, sendDiscord, nicerFinders, normalizeDate, TheBig3, getCookiePrice, IHATETAXES, randomWardenDye, formatNumber, sleep, getWindowName, getPurse, relistCheck, addCommasToNumber, betterOnce, normalNumber, sendPingStats, omgCookie, removeFromAh } = require('./utils.js');
+const { MessageBuilder } = require('discord-webhook-node');
 const { getPackets, makePackets } = require('./packetStuff.js');
 const { silly, debug, error, info, logmc } = require('./logger.js');
 var prompt = require('prompt-sync')();
@@ -20,15 +20,15 @@ const { config, updateConfig } = require('./config.js');
 const nbt = require('prismarine-nbt');
 const { sendFlip, giveTheFunStuff, updateSold, sendFlipFound } = require('./tpmWebsocket.js');
 
-let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip, showBed, privacy;
+let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip, showBed, privacy, autoCookie;
 
 function testign() {
   if (config.username.trim() === '') {
     ign = prompt(`What's your IGN (caps matter): `);
     if (ign) {
       config.username = ign;
-      updateConfig(config)
-      testDiscordIgn()
+      updateConfig(config);
+      testDiscordIgn();
     } else {
       logmc(`§cSo close! You need to have an actual ign`);
       testign();
@@ -112,16 +112,12 @@ dontListProfitOver = normalNumber(doNotList?.profitOver) ? normalNumber(doNotLis
 dontListItems = doNotList?.itemTags ? doNotList?.itemTags : ['HYPERION'];
 dontListSkins = doNotList?.skins || true;
 privacy = config.keepEverythingPrivate;
+autoCookie = config.autoCookie;
 
 let ping = "";
 if (discordid) ping = `<@${discordid}>`;
 let lastSentCookie = 0;
 
-if (webhook) {
-  webhook = new Webhook(webhook);
-  webhook.setUsername('TPM');
-  webhook.setAvatar('https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless');
-}
 webhookPricing = {};
 
 let privacySettings;
@@ -173,6 +169,35 @@ async function getReady() {
     bot.chat("/sbmenu")
     debug("sbmenu opened")
     bot.once('windowOpen', async (window) => {
+
+      if (!nbt.simplify(bot.currentWindow.slots[51].nbt).display.Lore.find(line => line.includes("Duration:"))) {
+        debug("No active cookie found, will start to get one");
+        //pathfinding todo, for now hub
+      }
+
+      if (nbt.simplify(bot.currentWindow.slots[51].nbt).display.Lore.find(line => line.includes("Duration:"))) {
+        let duration = nbt.simplify(bot.currentWindow.slots[51].nbt).display.Lore.find(line => line.includes("Duration:")).replace(/§./g, "").replace("Duration: ", "")
+
+        let yearsMatch = duration.match(/(\d+)y/)
+        let daysMatch = duration.match(/(\d+)d/)
+        let hoursMatch = duration.match(/(\d+)h/)
+        let years = yearsMatch ? parseInt(yearsMatch[1], 10) : 0
+        let days = daysMatch ? parseInt(daysMatch[1], 10) : 0
+        let hours = hoursMatch ? parseInt(hoursMatch[1], 10) : 0
+
+        let totalHours = (years * 8760) + (days * 24) + hours
+
+        if (totalHours <= 24) {
+          debug("Cookie duration is less than 24 hours will attempt to buy new one", cookieDuration)
+          cookieDuration = totalHours
+          // await omgCookie(bot,cookieDuration)
+        } else {
+          cookieDuration = totalHours
+          debug("Cookie duration is 1 day or more, not buying a new one", cookieDuration)
+          logmc("§6[§bTPM§6] §3Starting bot with cookie duration of " + cookieDuration + " hours")
+        }
+      }
+
       //console.log("check1")
       //console.log("window",bot.currentWindow.title)
       //console.log("item",bot.currentWindow.slots[48].nbt.value.display.value.Name.value)
@@ -367,6 +392,20 @@ async function getReady() {
   await getReady.then((message) => { debug(message) })
   await sleep(1000)
   logmc("§6[§bTPM§6] §3Finished getting slot data")
+  if (cookieDuration <= 24) {
+    if (await getPurse(bot) < await getCookiePrice()) {
+      logmc("§6[§bTPM§6] §cHaha you're poor and can't afford a cookie");
+    } else {
+      logmc("§6[§bTPM§6] §3Buying new cookie because yours will expire soon")
+      if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+      await sleep(250)
+      cookieDuration = await omgCookie(bot, cookieDuration)
+      if (cookieDuration == 0) {
+        logmc("§6[§bTPM§6] §cYou started the bot with no cookie active, please eat one and rs bot (sadly this can't really be safely automated because it requires pathfinding so you'll have to do it manually)")
+      }
+      await sleep(500)
+    }
+  }
   bot.state = null;
   startWS(session);
   lastAction = Date.now();
@@ -685,6 +724,7 @@ async function start() {
         switch (itemName) {
           case "gold_nugget":
             packets.click(31, windowID, 371);
+            betterClick(31, 0, 0); //sometimes the first one doesn't register just praying this will register if first doesn't
             if (useSkip) {
               packets.click(11, nextWindowID, 159);
               debug(`Skip is on!`);
@@ -791,24 +831,11 @@ async function start() {
     //Custom window handler
     check(bot);
   }, 1);*/
-  setInterval(async () => {
-    if (bot.state === 'buying' && Date.now() - lastLeftBuying > 5000) {
-      error("Bot state issue detected, resetting state and hopefully fixing queue lock issue")
-      await makePackets(bot._client);
-      packets = getPackets();
-      if (bot.currentWindow) {
-        bot.closeWindow(bot.currentWindow);
-        debug(`Got stuck on ${getWindowName(bot.currentWindow)}`);
-      }
-      await sleep(200)
-      bot.state = null;
-      lastAction = Date.now();
-    }
-  }, 250);
   let old = bot.state;
   setInterval(async () => {
     //Queue
     let toRun = false;
+    let worked = true;
     const current = stateManger.get();
     if (bot.state !== old) debug(`Bot state updated: ${bot.state}`);
     old = bot.state;
@@ -832,7 +859,7 @@ async function start() {
         toRun = 'listing'
         if (currentlisted == totalslots) {
           debug(`AH full, not listing from queue`);
-          return;
+          worked = false;
         }
         if (fullInv) {
           logmc("§6[§bTPM§6] §cNot attempting to relist because your inventory is full. You will need to log in and clear your inventory to continue")
@@ -845,7 +872,7 @@ async function start() {
             await sleep(500);
             relistHandler(command.id, command.targets);
           } else {
-            return;
+            worked = false;
           }
         }
       } else {
@@ -861,28 +888,43 @@ async function start() {
               currentOpen = ahid
               bot.chat(`/viewauction ${ahid}`);
               toRun = `/viewauction ${ahid}`
+              relistObject[command] = {
+                id: ahid,
+                target: ahhhhh.target,
+                finder: ahhhhh.finder,
+                tag: ahhhhh.tag,
+                profit: ahhhhh.profit
+              };
             } else {
               debug(`A window is open!!! Not opening from queue`);
-              return;
+              worked = false;
             }
-            relistObject[command] = {
-              id: ahid,
-              target: ahhhhh.target,
-              finder: ahhhhh.finder,
-              tag: ahhhhh.tag,
-              profit: ahhhhh.profit
-            };
           } else {
             error(`Ahhh didn't find ${command} in ${JSON.stringify(webhookPricing)} leaving queue and not changing state`);
             stateManger.next();
-            return;
+            worked = false;
           }
         } catch (e) {
           error(e)
         }
       }
-      stateManger.next();
-      debug(`Turning state into ${bot.state} and running ${toRun} at ${lastAction}`);
+      if (worked) {
+        stateManger.next();
+        debug(`Turning state into ${bot.state} and running ${toRun} at ${lastAction}`);
+      }
+    }
+    await sleep(50);
+    if (bot.state === 'buying' && Date.now() - lastLeftBuying > 5000) {
+      error("Bot state issue detected, resetting state and hopefully fixing queue lock issue")
+      await makePackets(bot._client);
+      packets = getPackets();
+      if (bot.currentWindow) {
+        bot.closeWindow(bot.currentWindow);
+        debug(`Got stuck on ${getWindowName(bot.currentWindow)}`);
+      }
+      await sleep(200)
+      bot.state = null;
+      lastAction = Date.now();
     }
   }, delay);
   bot.once('spawn', async () => {
@@ -984,7 +1026,7 @@ async function start() {
           lastSentCookie = time;
           if (webhook) {
             try {
-              await axios.post(config.webhook, {
+              const webhhookData = {
                 username: "TPM",
                 avatar_url: "https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless",
                 content: ping,
@@ -1005,7 +1047,14 @@ async function start() {
                     icon_url: 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437',
                   }
                 }]
-              })
+              }
+              if (Array.isArray(webhook)) {
+                webhook.forEach(async hook => {
+                  await axios.post(hook, webhhookData)
+                })
+              } else {
+                await axios.post(config.webhook, webhhookData)
+              }
             } catch (e) {
               console.error(`Couldn't post axios `, e);
               const embed = new MessageBuilder()
@@ -1014,15 +1063,25 @@ async function start() {
                 .addField('', `You can't flip!!!`)
                 .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
                 .setColor(9830424);
-              sendDiscord(embed)
+              sendDiscord(embed);
             }
           }
         }
         break;
-      case "Booster cookie expires in 30 minutes!":
+      case "Booster cookie expires in 30 minutes":
+        if (config.autoCookie) {
+          cookieDuration = 1
+          await omgCookie(bot, cookieDuration)
+        }
+
+        let whMessage = '';
+
+        if (config.autoCookie) whMessage = `Your cookie is about to run out. Attempting to buy new one bc u have that enabled.`
+        else whMessage = `You have 30 minutes to buy one or else. Make it quick. (consider enabling autocookie in config :D)`
+
         if (webhook) {
           try {
-            await axios.post(config.webhook, {
+            const webhhookData = {
               username: "TPM",
               avatar_url: "https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless",
               content: ping,
@@ -1032,7 +1091,7 @@ async function start() {
                 fields: [
                   {
                     name: '',
-                    value: `You have 30 minutes to buy one or else. Make it quick.`,
+                    value: whMessage,
                   }
                 ],
                 thumbnail: {
@@ -1043,19 +1102,70 @@ async function start() {
                   icon_url: 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437',
                 }
               }]
-            })
+            }
+            if (Array.isArray(webhook)) {
+              webhook.forEach(async hook => {
+                await axios.post(hook, webhhookData)
+              })
+            } else {
+              await axios.post(config.webhook, webhhookData)
+            }
           } catch (e) {
             console.error(`Couldn't post axios `, e);
             const embed = new MessageBuilder()
               .setFooter(`The "Perfect" Macro`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
               .setTitle('Your cookie is almost gone!')
-              .addField('', `You have 30 minutes to buy one or else. Make it quick.`)
+              .addField('', whMessage)
               .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
               .setColor(9830424);
             sendDiscord(embed)
           }
         }
-
+        break;
+      case "You reached the daily limit of coins you may bid on the auction house!":
+        if (webhook) {
+          try {
+            const webhhookData = {
+              username: "TPM",
+              avatar_url: "https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless",
+              content: ping,
+              embeds: [{
+                title: 'Auction house bid limit!',
+                color: 16629250,
+                fields: [
+                  {
+                    name: '',
+                    value: 'You can\'t flip until 8pm est :(',
+                  }
+                ],
+                thumbnail: {
+                  url: `https://mc-heads.net/head/${config.uuid}.png`,
+                },
+                footer: {
+                  text: `The "Perfect" Macro`,
+                  icon_url: 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437',
+                }
+              }]
+            }
+            if (Array.isArray(webhook)) {
+              webhook.forEach(async hook => {
+                await axios.post(hook, webhhookData)
+              })
+            } else {
+              await axios.post(config.webhook, webhhookData)
+            }
+          } catch (e) {
+            console.error(`Couldn't post axios `, e);
+            const embed = new MessageBuilder()
+              .setFooter(`The "Perfect" Macro`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+              .setTitle('Auction house bid limit!')
+              .addField('', 'You can\'t flip until 8pm est :(')
+              .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
+              .setColor(9830424);
+            sendDiscord(embed);
+          }
+        }
+        break;
     }
 
     if (/You claimed (.+?) from (?:\[.*?\] )?(.+?)'s auction!/.test(text) && config.relist && text.startsWith('You')) {
@@ -1103,7 +1213,7 @@ async function start() {
           if (!badFinders?.includes(lastPurchasedFinder)) {
             if (!dontListItems.includes(itemTag)) {
               if (profit < dontListProfitOver && profit > 0) {
-                if (dontListSkins && (!item.includes('✦') && !item.toLowerCase().includes('skin'))) {
+                if (dontListSkins && (!item.includes('✦') && !item.toLowerCase().includes('skin') && !item.includes('✿'))) {
                   purchasedFinders.push(lastPurchasedFinder);
                   setTimeout(async () => {
                     if (bot.state === null) {
