@@ -50,6 +50,12 @@ const defaultConfig = `{
   //Only claim your auctions (angry coop prevention)
   "ownAuctions": false,
 
+  //Automtically buy new cookie if you start bot with under 24hrs of cookie or if it's about to expire while bot is already running
+  "autoCookie": false,
+
+  //Stop buying if daily limit is reached and then resumes when it resets
+  "dailyLimit": false,
+
   "doNotList":{
 
     //Finders to not list. Options: USER, CraftCost, TFM, AI, SNIPER, STONKS, FLIPPER

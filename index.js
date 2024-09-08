@@ -20,7 +20,7 @@ const { config, updateConfig } = require('./config.js');
 const nbt = require('prismarine-nbt');
 const { sendFlip, giveTheFunStuff, updateSold, sendFlipFound } = require('./tpmWebsocket.js');
 
-let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip, showBed, privacy, autoCookie;
+let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip, showBed, privacy, autoCookie, dailyLimit;
 
 function testign() {
   if (config.username.trim() === '') {
@@ -113,6 +113,7 @@ dontListItems = doNotList?.itemTags ? doNotList?.itemTags : ['HYPERION'];
 dontListSkins = doNotList?.skins || true;
 privacy = config.keepEverythingPrivate;
 autoCookie = config.autoCookie;
+dailyLimit = config.dailyLimit;
 
 let ping = "";
 if (discordid) ping = `<@${discordid}>`;
@@ -1124,6 +1125,30 @@ async function start() {
         }
         break;
       case "You reached the daily limit of coins you may bid on the auction house!":
+        let est8 = new Date();
+        est8.setUTCHours(20 + (5 - new Date().getTimezoneOffset() / 60), 0, 0, 0);
+        if (new Date() > est8) est8.setDate(est8.getDate() + 1);
+    
+        let untilest8 = est8 - new Date();
+        let hours = Math.floor(untilest8 / 3600000);
+        let minutes = Math.floor((untilest8 % 3600000) / 60000);
+    
+        logmc(`§6[§bTPM§6] §cWomp Womp, you hit daily limit ): Pausing bot for ${hours} hours and ${minutes} minutes until it resets`);
+        
+        if (dailyLimit) {
+          await sleep(200)
+          bot.state = 'paused';
+          setTimeout(() => {
+            bot.state = null;
+            logmc("§6[§bTPM§6] §cBot is now active again! Daily limit has reset.");
+          }, untilest8);  
+          break;
+        }
+
+        let messageyyY = '';
+
+        if (config.dailyLimit) messageyyY = `You can't flip until 8pm est. Pausing bot for ${hours} hours and ${minutes} minutes until limit resets`
+        else messageyyY = `'You can't flip until 8pm est :('`
         if (webhook) {
           try {
             const webhhookData = {
@@ -1136,7 +1161,7 @@ async function start() {
                 fields: [
                   {
                     name: '',
-                    value: 'You can\'t flip until 8pm est :(',
+                    value: messageyyY,
                   }
                 ],
                 thumbnail: {
@@ -1160,12 +1185,17 @@ async function start() {
             const embed = new MessageBuilder()
               .setFooter(`The "Perfect" Macro`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
               .setTitle('Auction house bid limit!')
-              .addField('', 'You can\'t flip until 8pm est :(')
+              .addField('', messageyyY)
               .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
               .setColor(9830424);
             sendDiscord(embed);
           }
         }
+
+        if (dailyLimit) {
+          bot.state = 'paused';
+        }
+
         break;
     }
 
@@ -1499,7 +1529,7 @@ async function start() {
         if (bot.state) reasons.push(`bot state is ${bot.state}`);
         if (bot.currentWindow) reasons.push(`${getWindowName(bot.currentWindow)} is open`);
         if (currentTime - lastAction < delay) reasons.push(`the last action was too recent`);
-        if (bot.state !== 'moving') {
+        if (bot.state !== 'moving' && bot.state !== 'paused') {
           logmc(`§3Adding ${itemName}§3 to the pipeline because ${reasons.join(' and ')}!`);
           stateManger.add(noColorCodes(itemName), 69, 'buying');
         }
@@ -1579,7 +1609,7 @@ async function start() {
         if (bot.state) reasons.push(`bot state is ${bot.state}`);
         if (bot.currentWindow) reasons.push(`${getWindowName(bot.currentWindow)} is open`);
         if (currentTime - lastAction < delay) reasons.push(`the last action was too recent`);
-        if (bot.state !== 'moving') {
+        if (bot.state !== 'moving' && bot.state !== 'paused') {
           logmc(`§3Adding ${itemName}§3 to the pipeline because ${reasons.join(' and ')}!`);
           stateManger.add(weirdName, 69, 'buying');
         }
