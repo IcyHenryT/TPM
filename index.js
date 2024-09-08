@@ -163,6 +163,7 @@ function betterClick(slot, mode1 = 0, mode2 = 0) {
 
 async function getReady() {
   ranit = true;
+  let cookieDuration;
   let getReady = new Promise(async (resolve, reject) => {
     logmc("§6[§bTPM§6] §3Staring to get slot data, this will cause the cofl websocket to take a second to be connected");
     await sleep(5000)
