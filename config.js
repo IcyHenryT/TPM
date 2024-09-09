@@ -56,6 +56,8 @@ const defaultConfig = `{
   //Stop buying if daily limit is reached and then resumes when it resets
   "dailyLimit": false,
 
+  //If the flip is more profit than this value skip will be used on the flip. [THIS WILL STILL WORK IF USESKIP IS FALSE SO LEAVE IT A VERY HIGH NUMBER (preset) IF U NEVER WANT TO SKIP]
+  "skipProfit": 10000000001,
   "doNotList":{
 
     //Finders to not list. Options: USER, CraftCost, TFM, AI, SNIPER, STONKS, FLIPPER

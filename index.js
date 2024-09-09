@@ -20,7 +20,7 @@ const { config, updateConfig } = require('./config.js');
 const nbt = require('prismarine-nbt');
 const { sendFlip, giveTheFunStuff, updateSold, sendFlipFound } = require('./tpmWebsocket.js');
 
-let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip, showBed, privacy, autoCookie, dailyLimit;
+let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip, showBed, privacy, autoCookie, dailyLimit, skipProfit;
 
 function testign() {
   if (config.username.trim() === '') {
@@ -114,6 +114,7 @@ dontListSkins = doNotList?.skins || true;
 privacy = config.keepEverythingPrivate;
 autoCookie = config.autoCookie;
 dailyLimit = config.dailyLimit;
+skipProfit = config.skipProfit;
 
 let ping = "";
 if (discordid) ping = `<@${discordid}>`;
@@ -142,6 +143,7 @@ let closedGui = false;
 let bedFailed = false;
 let bot;
 let cdClaim = 0;
+let quickProfit;
 let fullInv = false;
 let relistClaim = false;
 let uuidFound = false;
@@ -727,8 +729,9 @@ async function start() {
           case "gold_nugget":
             packets.click(31, windowID, 371);
             betterClick(31, 0, 0); //sometimes the first one doesn't register just praying this will register if first doesn't
-            if (useSkip) {
+            if (useSkip || (quickProfit >= skipProfit)) {
               packets.click(11, nextWindowID, 159);
+              logmc(`§6[§bTPM§6] Used skip on this flip because it was over the set skipProfit in config`)
               debug(`Skip is on!`);
             }
             lastAction = firstGui;
@@ -888,6 +891,7 @@ async function start() {
               bedFailed = true;
               debug('Bed is now failed')
               currentOpen = ahid
+              quickProfit = IHATETAXES(ahhhhh.profit) - ahhhhh.startingBid;
               bot.chat(`/viewauction ${ahid}`);
               toRun = `/viewauction ${ahid}`
               relistObject[command] = {
@@ -918,6 +922,7 @@ async function start() {
     await sleep(50);
     if (bot.state === 'buying' && Date.now() - lastLeftBuying > 5000) {
       error("Bot state issue detected, resetting state and hopefully fixing queue lock issue")
+      debug("Bot state issue detected slot 31 and 11 IDS:", bot.currentWindow?.slots[31]?.name, bot.currentWindow?.slots[11]?.name)
       await makePackets(bot._client);
       packets = getPackets();
       if (bot.currentWindow) {
@@ -1499,8 +1504,8 @@ async function start() {
         lastLeftBuying = currentTime;
         bot.state = 'buying';
         auctionID = data.id;
+        quickProfit = IHATETAXES(data.target) - data.startingBid
         packets.sendMessage(`/viewauction ${auctionID}`);
-        let target = data.target;
         let finder = data.finder;
         itemName = data.itemName.replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "");
         lastAction = currentTime;
@@ -1575,8 +1580,8 @@ async function start() {
         auctionID = data.id;
         lastLeftBuying = Date.now();
         bot.state = 'buying';
+        quickProfit = IHATETAXES(data.target) - data.startingBid
         packets.sendMessage(`/viewauction ${auctionID}`);
-        let target = data.target;
         let finder = data.finder;
         bedFailed = false;
         debug(`Bed no longer failed`);
