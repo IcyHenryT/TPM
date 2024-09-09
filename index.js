@@ -1507,6 +1507,7 @@ async function start() {
         quickProfit = IHATETAXES(data.target) - data.startingBid
         packets.sendMessage(`/viewauction ${auctionID}`);
         let finder = data.finder;
+        let target = data.target;
         itemName = data.itemName.replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "");
         lastAction = currentTime;
         logmc(`§6[§bTPM§6] §8Opening ${itemName}`);
@@ -1582,6 +1583,7 @@ async function start() {
         bot.state = 'buying';
         quickProfit = IHATETAXES(data.target) - data.startingBid
         packets.sendMessage(`/viewauction ${auctionID}`);
+        let target = data.target;
         let finder = data.finder;
         bedFailed = false;
         debug(`Bed no longer failed`);
