@@ -756,6 +756,7 @@ async function start() {
             break;
           case 'gold_block':
             betterClick(31, 0, 0);
+            currentlisted--;
             lastAction = firstGui;
             bot.state = null;
             break;
@@ -849,15 +850,13 @@ async function start() {
       const command = current.command;
       lastAction = time;
       if (command === 'claim') {
-        bot.state = current.state;
         bot.state = 'claiming';
         await claimBought();
         toRun = 'claimBought';
         bot.state = null;
-      } else if (command === 'sold') {
-        bot.state = current.state;
+      } else if (current.state === 'claiming') {
         bot.state = 'claiming';
-        await claimSold();
+        await claimSold(command);
         toRun = 'claimSold';
         bot.state = null;
       } else if (command?.id) {
@@ -1378,7 +1377,6 @@ async function start() {
       const buyer = match2[1];
       const item = match2[2];
       const price = utils.onlyNumbers(match2[3]);
-      currentlisted--
       //console.log("purse test BOUGHT", await getPurse(bot), "price", price);
       if (webhook) {
         const purse = utils.formatNumber(await getPurse(bot) + parseInt(String(price).replace(/,/g, ''), 10));
@@ -1393,11 +1391,12 @@ async function start() {
       setTimeout(async () => {
         if (bot.state === null) {
           bot.state = 'claiming';
-          await claimSold();
+          clickevent = message.clickEvent.value;
+          await claimSold(clickevent);
           bot.state = null;
           sendScoreboard();
         } else {
-          stateManger.add('sold', 28, 'claiming');
+          stateManger.add(message.clickEvent.value, 28, 'claiming');
         }
       }, 500);
     }
@@ -1444,52 +1443,8 @@ async function start() {
     betterClick(10, 0, 0);
     await sleep(50);
   }
-  async function claimSold() {
-    bot.chat('/ah');
-    await sleep(300);
-    if (getWindowName(bot.currentWindow)?.includes('Auction House')) {
-
-      betterClick(15, 0, 0);
-      await sleep(300);
-      if (getWindowName(bot.currentWindow)?.includes('Manage Auctions')) {
-
-        const items = bot.currentWindow?.slots;
-        items.forEach(async (item, index) => {
-          if (!item) return;
-          const name = item?.value?.display?.value?.Name?.value?.toString();
-          if (name?.includes('Claim')) {
-            betterClick(index, 0, 0);
-            sleep(50);
-            //currentlisted--;
-            if (fullInv) {
-              logmc("§6[§bTPM§6] §cNot attempting to relist because your inventory is full. You will need to log in and clear your inventory to continue")
-              bot.state = null;
-            } else {
-              await sleep(5000)
-              if (relistCheck(purchasedIds, currentlisted, totalslots, bot.state)) {
-                bot.state = "listing";
-                await sleep(500);
-                relistHandler(purchasedIds, purchasedTargets);
-              } else {
-                stateManger.add({ id: purchasedIds, targets: purchasedTargets }, 4, 'listing');
-              }
-            }
-            return;
-          }
-        });
-        items.forEach((item, index) => {
-          if (!item) return;
-          const lore = item.nbt.value?.display?.value?.Lore?.value?.value?.toString();
-          if (lore?.includes('Sold!')) {
-            betterClick(index, 0, 0);
-          }
-        });
-      } else {
-        console.error(`Didn't properly claim sold auction not finding Manage auctions. Found ${getWindowName(bot.currentWindow)}`);
-      }
-    } else {
-      console.error(`Didn't properly claim sold auction not finding Auction House. Found ${getWindowName(bot.currentWindow)}`);
-    }
+  async function claimSold(omgeitsthething) {
+    bot.chat(omgeitsthething);
     return;
   }
   ws.on('flip', async msg => {
