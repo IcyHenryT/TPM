@@ -724,7 +724,7 @@ async function start() {
       packets.confirmClick(windowID);
       if (windowName === '{"italic":false,"extra":[{"text":"BIN Auction View"}],"text":""}' && bot.state !== 'listing') {
         firstGui = Date.now();
-        const item = await itemLoad(31);
+        let item = await itemLoad(31);
         const itemName = item.name;
         debug(`found ${itemName} in window ID ${windowID}`);
         switch (itemName) {
@@ -751,10 +751,25 @@ async function start() {
             bot.state = null;
             break;
           case 'feather':
-            logmc(`§6[§bTPM§6] Potatoed, closing GUI.`)
-            bot.closeWindow(bot.currentWindow);
-            lastAction = firstGui;
-            bot.state = null;
+            debug(`Awaiting item load for feather`);
+            item = (await itemLoad(31, item)).name;
+            if(item === 'potato'){
+              logmc(`§6[§bTPM§6] Potatoed, closing GUI.`)
+              bot.closeWindow(bot.currentWindow);
+              lastAction = firstGui;
+              bot.state = null;
+            } else if (item === 'gold_block'){
+              betterClick(31, 0, 0);
+              currentlisted--;
+              lastAction = firstGui;
+              bot.state = null;
+            } else {
+              debug(`Weird item found ${item}`);
+              logmc(`§6[§bTPM§6] Didn't find an important item please report this, closing GUI.`)
+              bot.closeWindow(bot.currentWindow);
+              lastAction = firstGui;
+              bot.state = null;
+            }
             break;
           case 'gold_block':
             betterClick(31, 0, 0);
@@ -1687,12 +1702,12 @@ async function start() {
   };
   ws.on('getInventory', sendInventoy);
   bot.on('windowOpen', sendInventoy);
-  async function itemLoad(slot) {
+  async function itemLoad(slot, currentSlot = null) {
     return new Promise((resolve, reject) => {
       let index = 1;
       const interval = setInterval(() => {
         const check = bot.currentWindow?.slots[slot];
-        if (check) {
+        if (check !== currentSlot) {
           clearInterval(interval);
           resolve(check);
           debug(`Found item on ${index}`);
