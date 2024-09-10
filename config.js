@@ -58,6 +58,10 @@ const defaultConfig = `{
 
   //If the flip is more profit than this value skip will be used on the flip. [THIS WILL STILL WORK IF USESKIP IS FALSE SO LEAVE IT A VERY HIGH NUMBER (preset) IF U NEVER WANT TO SKIP]
   "skipProfit": 10000000001,
+
+  //Will use skip if finder is user [WILL STILL WORK IF USESKIP IS FALSE SO SET THIS ACCORDINGLY]
+  "skipUser": false,
+
   "doNotList":{
 
     //Finders to not list. Options: USER, CraftCost, TFM, AI, SNIPER, STONKS, FLIPPER

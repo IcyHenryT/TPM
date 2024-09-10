@@ -20,7 +20,7 @@ const { config, updateConfig } = require('./config.js');
 const nbt = require('prismarine-nbt');
 const { sendFlip, giveTheFunStuff, updateSold, sendFlipFound } = require('./tpmWebsocket.js');
 
-let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip, showBed, privacy, autoCookie, dailyLimit, skipProfit;
+let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip, showBed, privacy, autoCookie, dailyLimit, skipProfit, skipUser;
 
 function testign() {
   if (config.username.trim() === '') {
@@ -115,6 +115,7 @@ privacy = config.keepEverythingPrivate;
 autoCookie = config.autoCookie;
 dailyLimit = config.dailyLimit;
 skipProfit = config.skipProfit;
+skipUser = config.skipUser;
 
 let ping = "";
 if (discordid) ping = `<@${discordid}>`;
@@ -144,6 +145,7 @@ let bedFailed = false;
 let bot;
 let cdClaim = 0;
 let quickProfit;
+let quickFinder;
 let fullInv = false;
 let relistClaim = false;
 let uuidFound = false;
@@ -729,9 +731,9 @@ async function start() {
           case "gold_nugget":
             packets.click(31, windowID, 371);
             betterClick(31, 0, 0); //sometimes the first one doesn't register just praying this will register if first doesn't
-            if (useSkip || (quickProfit >= skipProfit)) {
+            if (useSkip || (quickProfit >= skipProfit) || (skipUser && quickFinder === 'USER')) {
               packets.click(11, nextWindowID, 159);
-              logmc(`§6[§bTPM§6] Used skip on this flip because it was over the set skipProfit in config`)
+              logmc(`§6[§bTPM§6] Used skip on this flip because it was over the set skipProfit in config or the finder was USER and skipUser is enabled`);
               debug(`Skip is on!`);
             }
             lastAction = firstGui;
@@ -891,6 +893,7 @@ async function start() {
               debug('Bed is now failed')
               currentOpen = ahid
               quickProfit = IHATETAXES(ahhhhh.profit) - ahhhhh.startingBid;
+              quickFinder = ahhhhh.finder.toUpperCase()
               bot.chat(`/viewauction ${ahid}`);
               toRun = `/viewauction ${ahid}`
               relistObject[command] = {
@@ -1460,6 +1463,7 @@ async function start() {
         lastLeftBuying = currentTime;
         bot.state = 'buying';
         auctionID = data.id;
+        quickFinder = data.finder.toUpperCase()
         quickProfit = IHATETAXES(data.target) - data.startingBid
         packets.sendMessage(`/viewauction ${auctionID}`);
         let finder = data.finder;
@@ -1537,6 +1541,7 @@ async function start() {
         auctionID = data.id;
         lastLeftBuying = Date.now();
         bot.state = 'buying';
+        quickFinder = data.finder.toUpperCase()
         quickProfit = IHATETAXES(data.target) - data.startingBid
         packets.sendMessage(`/viewauction ${auctionID}`);
         let target = data.target;
