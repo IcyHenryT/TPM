@@ -1,4 +1,4 @@
-const { logmc } = require('./logger.js');
+const { logmc, debug } = require('./logger.js');
 
 let states = [];
 
