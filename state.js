@@ -12,7 +12,7 @@ function add(command, priority, state) {
         priority: priority,
         state: state
     })
-    debug(JOSN.stringify(states));
+    debug(JSON.stringify(states));
     states = states.sort((a, b) => b.priority - a.priority);
 }
 function top() {
