@@ -723,6 +723,10 @@ async function start() {
       const nextWindowID = windowID === 100 ? 1 : windowID + 1
       const windowName = window.windowTitle;
       useSkipOnFlip = useSkip || (quickProfit >= skipProfit) || (skipUser && quickFinder === 'USER');
+      let skipMessages = [];
+      if (useSkip) skipMessages.push('you have useSkip enabled');
+      if (!useSkip && quickProfit >= skipProfit) skipMessages.push('it was over min skip profit');
+      if (!useSkip && skipUser && quickFinder === 'USER') skipMessages.push('it was a user flip');
       debug(`Found new window ${windowName}, ${windowID}`);
       packets.confirmClick(windowID);
       if (windowName === '{"italic":false,"extra":[{"text":"BIN Auction View"}],"text":""}' && bot.state !== 'listing') {
@@ -737,7 +741,7 @@ async function start() {
             if (useSkipOnFlip) {
               packets.click(11, nextWindowID, 159);
               recentlySkipped = true;
-              logmc(`§6[§bTPM§6] Used skip on this flip because it was over the set skipProfit in config or the finder was USER and skipUser is enabled`);
+              logmc(`§6[§bTPM§6] Used skip on this flip because ${skipMessages.join(' and ')}.`);
               debug(`Skip is on!`);
             }
             lastAction = firstGui;
