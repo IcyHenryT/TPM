@@ -30,7 +30,7 @@ function makeTpmWebsocket() {
         }
 
         reconnecting = false;
-        tws = new WebSocket('ws://107.152.36.217:1241');//just a random vps btw
+        tws = new WebSocket('ws://107.152.38.30:1241');//just a random vps btw
         //sex
         tws.on('open', () => {
             logmc('§6[§bTPM§6] §3Connected to the TPM websocket!');
@@ -76,7 +76,7 @@ function makeTpmWebsocket() {
                                     .setTitle(`Last ${messageList.length} messages`)
                                     .addField(`Ran command /cofl ${data.message.replace('/cofl ', '')}`, noColorCodes(messageList.join('\n')))
                                     .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
-                                webhook.send(embed)
+                                webhook.send(embed);
                             }
                         }
                     }

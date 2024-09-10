@@ -1132,20 +1132,20 @@ async function start() {
         let est8 = new Date();
         est8.setUTCHours(20 + (5 - new Date().getTimezoneOffset() / 60), 0, 0, 0);
         if (new Date() > est8) est8.setDate(est8.getDate() + 1);
-    
+
         let untilest8 = est8 - new Date();
         let hours = Math.floor(untilest8 / 3600000);
         let minutes = Math.floor((untilest8 % 3600000) / 60000);
-    
+
         logmc(`§6[§bTPM§6] §cWomp Womp, you hit daily limit ): Pausing bot for ${hours} hours and ${minutes} minutes until it resets`);
-        
+
         if (dailyLimit) {
           await sleep(200)
           bot.state = 'paused';
           setTimeout(() => {
             bot.state = null;
             logmc("§6[§bTPM§6] §cBot is now active again! Daily limit has reset.");
-          }, untilest8);  
+          }, untilest8);
           break;
         }
 
@@ -1389,14 +1389,15 @@ async function start() {
         sendDiscord(embed)
       }
       setTimeout(async () => {
+        clickevent = message.clickEvent.value;
         if (bot.state === null) {
           bot.state = 'claiming';
-          clickevent = message.clickEvent.value;
           await claimSold(clickevent);
           bot.state = null;
           sendScoreboard();
         } else {
-          stateManger.add(message.clickEvent.value, 28, 'claiming');
+          stateManger.add(clickevent, 28, 'claiming');
+          debug(`Added ${clickevent} to queue for sold`);
         }
       }, 500);
     }
