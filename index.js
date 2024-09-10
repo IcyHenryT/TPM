@@ -155,6 +155,8 @@ let boughtItems = 0, soldItems = 0;
 let lastRelistCheck = Date.now();
 let packets;
 let buyspeed, confirmAt, oldConfirmAt;
+let useSkipOnFlip = false;
+let recentlySkipped = false;
 
 function betterClick(slot, mode1 = 0, mode2 = 0) {
   if (!bot.currentWindow) {
@@ -720,6 +722,7 @@ async function start() {
       const windowID = window.windowId;
       const nextWindowID = windowID === 100 ? 1 : windowID + 1
       const windowName = window.windowTitle;
+      useSkipOnFlip = useSkip || (quickProfit >= skipProfit) || (skipUser && quickFinder === 'USER');
       debug(`Found new window ${windowName}, ${windowID}`);
       packets.confirmClick(windowID);
       if (windowName === '{"italic":false,"extra":[{"text":"BIN Auction View"}],"text":""}' && bot.state !== 'listing') {
@@ -731,8 +734,9 @@ async function start() {
           case "gold_nugget":
             packets.click(31, windowID, 371);
             betterClick(31, 0, 0); //sometimes the first one doesn't register just praying this will register if first doesn't
-            if (useSkip || (quickProfit >= skipProfit) || (skipUser && quickFinder === 'USER')) {
+            if (useSkipOnFlip) {
               packets.click(11, nextWindowID, 159);
+              recentlySkipped = true;
               logmc(`§6[§bTPM§6] Used skip on this flip because it was over the set skipProfit in config or the finder was USER and skipUser is enabled`);
               debug(`Skip is on!`);
             }
@@ -751,25 +755,22 @@ async function start() {
             bot.state = null;
             break;
           case 'feather':
-            debug(`Awaiting item load for feather`);
-            item = (await itemLoad(31, item)).name;
-            if(item === 'potato'){
-              logmc(`§6[§bTPM§6] Potatoed, closing GUI.`)
-              bot.closeWindow(bot.currentWindow);
-              lastAction = firstGui;
-              bot.state = null;
-            } else if (item === 'gold_block'){
+            item = (await itemLoad(31, true)).name;
+            if (item === 'gold_block') {
               betterClick(31, 0, 0);
               currentlisted--;
               lastAction = firstGui;
-              bot.state = null;
-            } else {
-              debug(`Weird item found ${item}`);
-              logmc(`§6[§bTPM§6] Didn't find an important item please report this, closing GUI.`)
+              break;
+            } else if (item === 'potato') {
+              logmc(`§6[§bTPM§6] Potatoed, closing GUI.`)
               bot.closeWindow(bot.currentWindow);
               lastAction = firstGui;
-              bot.state = null;
+            } else {
+              error(`Item ${item} not found for feather. Please report this`)
+              bot.closeWindow(bot.currentWindow);
+              lastAction = firstGui;
             }
+            bot.state = null;
             break;
           case 'gold_block':
             betterClick(31, 0, 0);
@@ -786,8 +787,12 @@ async function start() {
         confirmAt = Date.now() - firstGui
         logmc(`§6[§bTPM§6] §3Confirm at ${confirmAt}ms`);
         await itemLoad(11);
-        betterClick(11, 0, 0);
-        debug(`Clicking confirm ${window.windowId}`);
+        if (!recentlySkipped) {
+          betterClick(11, 0, 0);
+          debug(`Clicking confirm ${window.windowId}`);
+        } else {
+          recentlySkipped = false;
+        }
         if (bedSpam || bedFailed) {
           for (i = 1; i < 11; i++) {
             await sleep(30);
@@ -1702,12 +1707,13 @@ async function start() {
   };
   ws.on('getInventory', sendInventoy);
   bot.on('windowOpen', sendInventoy);
-  async function itemLoad(slot, currentSlot = null) {
+  async function itemLoad(slot, alradyLoaded = false) {
     return new Promise((resolve, reject) => {
       let index = 1;
+      const first = bot.currentWindow?.slots[slot];
       const interval = setInterval(() => {
         const check = bot.currentWindow?.slots[slot];
-        if (check !== currentSlot) {
+        if ((check && !alradyLoaded) || (alradyLoaded && check !== first)) {
           clearInterval(interval);
           resolve(check);
           debug(`Found item on ${index}`);
