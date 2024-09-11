@@ -93,24 +93,28 @@ function normalizeDate(dateString) {
     }
 }
 
-function getPurse(bot) {
-    return new Promise((resolve, reject) => {
-        try {
-            let pursey;
-            let scoreboard = bot?.scoreboard?.sidebar?.items?.map(item => item?.displayName?.getText(null)?.replace(item.name, ''));
-            scoreboard?.forEach(e => {
-                if (e.includes('Purse:') || e.includes('Piggy:')) {
-                    let purseString = e.substring(e.indexOf(':') + 1).trim();
-                    debug(`Found purse line ${purseString}`)
-                    if (purseString.includes('(')) purseString = purseString.split('(')[0];
-                    pursey = parseInt(purseString.replace(/\D/g, ''), 10);
-                }
-            });
-            resolve(pursey);
-        } catch (error) {
-            reject(error);
+function getPurse(bot, recent = false) {
+    try {
+        let pursey;
+        let scoreboard = bot?.scoreboard?.sidebar?.items?.map(item => item?.displayName?.getText(null)?.replace(item.name, ''));
+        scoreboard?.forEach(e => {
+            if (e.includes('Purse:') || e.includes('Piggy:')) {
+                let purseString = e.substring(e.indexOf(':') + 1).trim();
+                debug(`Found purse line ${purseString}`)
+                if (purseString.includes('(')) purseString = purseString.split('(')[0];
+                pursey = parseInt(purseString.replace(/\D/g, ''), 10);
+            }
+        });
+        if (recent) {
+            if (recent * .99 >= pursey || recent * 1.01 <= pursey) {
+                return recent;
+            }
         }
-    });
+        return pursey;
+    } catch (error) {
+        error(error);
+        return error;
+    }
 }
 
 function relistCheck(currentlisted, totalslots, botstate) {
@@ -373,7 +377,7 @@ async function putInAh(bot, slot = 63) {
     if (getWindowName(bot.currentWindow)?.includes('Auction House') || getWindowName(bot.currentWindow)?.includes('Co-op Auction House')) {
         betterClick(15, 0, 0, bot)
         await betterOnce(bot, 'windowOpen')
-        await sleep (150)
+        await sleep(150)
         if (!bot.currentWindow.slots[13].name == 'stone_button') {
             logmc("§6[§bTPM§6] §cThere was already an item in the creation slot, attempting to remove it [Auto Cookie]")
             await removeFromAh(bot, "moving")
@@ -552,7 +556,7 @@ async function getCookiePrice() {
     try { return Math.round((await axios.get('https://api.hypixel.net/v2/skyblock/bazaar')).data.products.BOOSTER_COOKIE.quick_status.buyPrice + 5_000_000) } catch (e) { error(e) };
 }
 
-async function checkVersion(currVersion) { try { const { data: { tag_name: latestVersion } } = await axios.get("https://api.github.com/repos/IcyHenryT/TPM/releases/latest"); latestVersion.split('.').some((version, i) => version > (currVersion.split('.')[i] || 0)) && logmc("§6[§bTPM§6] §c new version" + latestVersion + " available, you should totally update to the new one and relaunch!! :DD [Current: " + currVersion + "]"); } catch (e) {} }
+async function checkVersion(currVersion) { try { const { data: { tag_name: latestVersion } } = await axios.get("https://api.github.com/repos/IcyHenryT/TPM/releases/latest"); latestVersion.split('.').some((version, i) => version > (currVersion.split('.')[i] || 0)) && logmc("§6[§bTPM§6] §c new version" + latestVersion + " available, you should totally update to the new one and relaunch!! :DD [Current: " + currVersion + "]"); } catch (e) { } }
 
 
 const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
