@@ -107,6 +107,7 @@ function getPurse(bot, recent = false) {
         });
         if (recent) {
             if (recent * .99 >= pursey || recent * 1.01 <= pursey) {
+                debug(`Purse ${pursey} was too far away from ${recent}`);
                 return recent;
             }
         }
