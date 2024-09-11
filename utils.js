@@ -371,14 +371,19 @@ async function putInAh(bot, slot = 63) {
     betterClick(slot, 0, 0, bot)
     await sleep(250)
     if (getWindowName(bot.currentWindow)?.includes('Auction House') || getWindowName(bot.currentWindow)?.includes('Co-op Auction House')) {
-        logmc("§6[§bTPM§6] §cThere was already an item in the creation slot, attempting to remove it [Auto Cookie]")
-        await removeFromAh(bot, "moving")
-        if (tries < 2) {
+        betterClick(15, 0, 0, bot)
+        await betterOnce(bot, 'windowOpen')
+        await sleep (150)
+        if (!bot.currentWindow.slots[13].name == 'stone_button') {
+            logmc("§6[§bTPM§6] §cThere was already an item in the creation slot, attempting to remove it [Auto Cookie]")
+            await removeFromAh(bot, "moving")
+        }
+        if (tries < 9) {
             tries++
             await putInAh(bot, slot + 1)
             return;
         } else {
-            logmc("§6[§bTPM§6] §cIssue with removing item from ah slot likely because your inv is full so giving up rip bozo (if your inv isnt full report pls :D)")
+            logmc("§6[§bTPM§6] §cIssue with removing item from ah slot likely because your inv is full (or hotbar has all soulbound items) so giving up rip bozo (if your inv isnt full report pls :D)")
             return;
         }
     }
@@ -547,6 +552,8 @@ async function getCookiePrice() {
     try { return Math.round((await axios.get('https://api.hypixel.net/v2/skyblock/bazaar')).data.products.BOOSTER_COOKIE.quick_status.buyPrice + 5_000_000) } catch (e) { error(e) };
 }
 
+async function checkVersion(currVersion) { try { const { data: { tag_name: latestVersion } } = await axios.get("https://api.github.com/repos/IcyHenryT/TPM/releases/latest"); latestVersion.split('.').some((version, i) => version > (currVersion.split('.')[i] || 0)) && logmc("§6[§bTPM§6] §c new version" + latestVersion + " available, you should totally update to the new one and relaunch!! :DD [Current: " + currVersion + "]"); } catch (e) {} }
+
 
 const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
-module.exports = { noColorCodes, sendDiscord, randomWardenDye, sendPingStats, onlyNumbers, normalizeDate, normalNumber, IHATETAXES, formatNumber, sleep, checkHypixelPing, TheBig3, checkCoflDelay, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders, betterOnce, checkCoflPing, omgCookie, removeFromAh, getCookiePrice }
+module.exports = { noColorCodes, sendDiscord, randomWardenDye, sendPingStats, onlyNumbers, normalizeDate, normalNumber, IHATETAXES, formatNumber, sleep, checkHypixelPing, TheBig3, checkCoflDelay, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders, betterOnce, checkCoflPing, omgCookie, removeFromAh, getCookiePrice, checkVersion }

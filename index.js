@@ -9,12 +9,12 @@ const utils = require(`./utils.js`);
 const { randomUUID } = require('crypto');
 const axios = require('axios');
 const stateManger = require(`./state.js`);
-const { noColorCodes, sendDiscord, nicerFinders, normalizeDate, TheBig3, getCookiePrice, IHATETAXES, randomWardenDye, formatNumber, sleep, getWindowName, getPurse, relistCheck, addCommasToNumber, betterOnce, normalNumber, sendPingStats, omgCookie, removeFromAh } = require('./utils.js');
+const { noColorCodes, sendDiscord, nicerFinders, normalizeDate, TheBig3, getCookiePrice, IHATETAXES, randomWardenDye, formatNumber, sleep, getWindowName, getPurse, relistCheck, addCommasToNumber, betterOnce, normalNumber, sendPingStats, omgCookie, checkVersion } = require('./utils.js');
 const { MessageBuilder } = require('discord-webhook-node');
 const { getPackets, makePackets } = require('./packetStuff.js');
 const { silly, debug, error, info, logmc } = require('./logger.js');
 var prompt = require('prompt-sync')();
-const { startWS, send, handleCommand, ws, sidListener, solveCaptcha } = require('./websocketHelper.js');
+const { startWS, send, handleCommand, ws, sidListener, solveCaptcha, version: botVersion } = require('./websocketHelper.js');
 let lastAction = Date.now();
 const { config, updateConfig } = require('./config.js');
 const nbt = require('prismarine-nbt');
@@ -195,7 +195,7 @@ async function getReady() {
 
         let totalHours = (years * 8760) + (days * 24) + hours
 
-        if (totalHours <= 24) {
+        if (totalHours <= 24 && autoCookie) {
           debug("Cookie duration is less than 24 hours will attempt to buy new one", cookieDuration)
           cookieDuration = totalHours
           // await omgCookie(bot,cookieDuration)
@@ -373,8 +373,49 @@ async function getReady() {
                         debug("claimed multiple already sold auctions");
                         currentlisted -= bids
                         debug("currentlisted updated to", currentlisted)
+                        await betterOnce(bot, 'windowClose')
+                        await sleep(350)
+                        bot.chat("/ah")
+                        await betterOnce(bot, 'windowOpen');
+                        if ((getWindowName(bot.currentWindow)?.includes("Co-op Auction House") || getWindowName(bot.currentWindow)?.includes("Auction House")) && (bot.currentWindow.slots[15].nbt.value.display.value.Name.value?.includes("Manage Auctions")) || bot.currentWindow.slots[15].nbt.value.display.value.Name.value?.includes("Create Auction")) {
+                          bot.currentWindow.slots.every(async item => {
+                            if (item == null) { return }
+                            if (item.slot == 15) {
+                              //console.log("here")
+                              //console.log("value",bot.currentWindow.slots[15].nbt.value.display.value.Name.value)
+                              let itemNbt = nbt.simplify(item.nbt)
+                              let cleanedLoreLines = [];
+                              if (itemNbt.display && itemNbt.display.Lore) {
+                                cleanedLoreLines = itemNbt.display.Lore.map(line => line.replace(/§./g, ""));
+                                //cleanedLoreLines.forEach(cleanedLine => console.log("Cleaned Lore line:", cleanedLine));
+                              }
+                              let none, one, multiple;
+                              try { none = cleanedLoreLines.find(line => line.includes("Set your own items")); } catch { }
+                              try { one = cleanedLoreLines.find(line => line.includes("You own 1 auction")); } catch { }
+                              try { multiple = cleanedLoreLines.find(line => /You own \d+ auctions/.test(line)); } catch { }
+                              // console.log("none",none)
+                              // console.log("one",one)
+                              // console.log("multiple",multiple)
+                              if (none) {
+                                currentlisted = 0;
+                                debug("[SECOND PASS] current reset to,", currentlisted)
+                              }
+                              if (one) {
+                                currentlisted = 1;
+                                debug("[SECOND PASS] current reset to,", currentlisted)
+                              }
+                              if (multiple) {
+                                let match = multiple.match(/You own (\d+) auctions in/);
+                                if (match && match[1]) {
+                                  currentlisted = parseInt(match[1], 10);
+                                  debug("[SECOND PASS] current listed reset to,", currentlisted)
+                                }
+                              }
+                            }
+                          })
+                        }
                       }
-                      if (!toclaim1 || !toclaim2) {
+                      if (!toclaim1 && !toclaim2) {
                         debug("no previously sold auctions to claim, proceeeding...")
                         if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
                       }
@@ -400,7 +441,7 @@ async function getReady() {
   await getReady.then((message) => { debug(message) })
   await sleep(1000)
   logmc("§6[§bTPM§6] §3Finished getting slot data")
-  if (cookieDuration <= 24) {
+  if (cookieDuration <= 24 && autoCookie) {
     if (await getPurse(bot) < await getCookiePrice()) {
       logmc("§6[§bTPM§6] §cHaha you're poor and can't afford a cookie");
     } else {
@@ -790,8 +831,8 @@ async function start() {
       } else if (windowName === '{"italic":false,"extra":[{"text":"Confirm Purchase"}],"text":""}') {
         confirmAt = Date.now() - firstGui
         logmc(`§6[§bTPM§6] §3Confirm at ${confirmAt}ms`);
-        await itemLoad(11);
         if (!recentlySkipped) {
+          await itemLoad(11);
           betterClick(11, 0, 0);
           debug(`Clicking confirm ${window.windowId}`);
         } else {
@@ -962,6 +1003,7 @@ async function start() {
   }, delay);
   bot.once('spawn', async () => {
     //Auto join SB
+    await checkVersion(botVersion)
     await bot.waitForChunksToLoad();
     await sleep(5000);
     bot.state = 'moving';

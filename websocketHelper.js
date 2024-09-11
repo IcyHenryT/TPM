@@ -5,7 +5,7 @@ const axios = require('axios');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
 let { config, updateConfig } = require('./config.js');
 const { getPackets } = require('./packetStuff.js');
-const version = '1.4.4';
+const version = '1.4.5';
 let webhook;
 let id = config.discordID;
 const ws = new EventEmitter();
@@ -302,4 +302,4 @@ function checkCaptchaSolution(message) {
 }
 
 
-module.exports = { startWS, ws, send, sidListener, handleCommand, solveCaptcha }
+module.exports = { startWS, ws, send, sidListener, handleCommand, solveCaptcha, version }
