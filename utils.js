@@ -365,7 +365,7 @@ async function sendDiscord(embed, attempt = 0) {
 async function putInAh(bot, slot = 63) {
     debug("starting put in ah")
     if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
-    await sleep(150)
+    await sleep(250)
     bot.chat("/ah")
     await betterOnce(bot, 'windowOpen')
     betterClick(slot, 0, 0, bot)
@@ -373,11 +373,11 @@ async function putInAh(bot, slot = 63) {
     if (getWindowName(bot.currentWindow)?.includes('Auction House') || getWindowName(bot.currentWindow)?.includes('Co-op Auction House')) {
         betterClick(15, 0, 0, bot)
         await betterOnce(bot, 'windowOpen')
-        await sleep (150)
+        await sleep (250)
         if (!bot.currentWindow.slots[13].name == 'stone_button') {
             logmc("§6[§bTPM§6] §cThere was already an item in the creation slot, attempting to remove it [Auto Cookie]")
             await removeFromAh(bot, "moving")
-        }
+        } //otherwise item is unactionable
         if (tries < 9) {
             tries++
             await putInAh(bot, slot + 1)

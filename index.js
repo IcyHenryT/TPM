@@ -418,6 +418,8 @@ async function getReady() {
                       if (!toclaim1 && !toclaim2) {
                         debug("no previously sold auctions to claim, proceeeding...")
                         if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+                      } else {
+                        if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
                       }
                       resolve("ready to start flipping, connecting to socket")
                     }
@@ -949,7 +951,7 @@ async function start() {
       } else {
         try {
           const ahhhhh = webhookPricing[command];
-          debug(JSON.stringify(ahhhhh));
+          debug("WebhookPricing:",JSON.stringify(ahhhhh));
           if (ahhhhh) {//crash :(
             const ahid = ahhhhh.auctionId
             bot.state = current.state;
@@ -968,6 +970,7 @@ async function start() {
                 tag: ahhhhh.tag,
                 profit: ahhhhh.profit
               };
+              debug(`Relist object: ${JSON.stringify(relistObject[command])}`)
             } else {
               debug(`A window is open!!! Not opening from queue`);
               worked = false;
@@ -1554,6 +1557,7 @@ async function start() {
           profit: IHATETAXES(target) - data.startingBid,
           tag: data.tag
         };
+        debug(`Relist object: ${JSON.stringify(relistObject[weirdName])}`)
       } else {
         auctionID = data.id;
         itemName = data.itemName.replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "");
@@ -1634,6 +1638,7 @@ async function start() {
           tag: data.auction.tag,
           profit: IHATETAXES(data.target) - data.auction.startingBid
         };
+        debug(`Relist object: ${JSON.stringify(relistObject[weirdName])}`)
         //const profit = utils.IHATETAXES(webhookPricing[item].target) - utils.onlyNumbers(price);
       } else {
         auctionID = data.id;
