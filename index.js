@@ -953,7 +953,7 @@ async function start() {
       } else {
         try {
           const ahhhhh = webhookPricing[command];
-          debug("WebhookPricing:",JSON.stringify(ahhhhh));
+          debug(`WebhookPricing: ${JSON.stringify(ahhhhh)}`);
           if (ahhhhh) {//crash :(
             if (!bot.currentWindow) {
               const ahid = ahhhhh.auctionId
