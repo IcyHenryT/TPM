@@ -149,7 +149,7 @@ let quickFinder;
 let fullInv = false;
 let relistClaim = false;
 let uuidFound = false;
-let lastLeftBuying;
+let lastLeftBuying = Date.now();
 let waitting;
 let boughtItems = 0, soldItems = 0;
 let lastRelistCheck = Date.now();
@@ -157,6 +157,7 @@ let packets;
 let buyspeed, confirmAt, oldConfirmAt;
 let useSkipOnFlip = false;
 let recentlySkipped = false;
+let recentPurse = false;
 
 function betterClick(slot, mode1 = 0, mode2 = 0) {
   if (!bot.currentWindow) {
@@ -180,7 +181,6 @@ async function getReady() {
 
       if (!nbt.simplify(bot.currentWindow.slots[51].nbt).display.Lore.find(line => line.includes("Duration:"))) {
         debug("No active cookie found, will start to get one");
-        //pathfinding todo, for now hub
       }
 
       if (nbt.simplify(bot.currentWindow.slots[51].nbt).display.Lore.find(line => line.includes("Duration:"))) {
@@ -442,9 +442,11 @@ async function getReady() {
   //console.log(bot.currentWindow.title)
   await getReady.then((message) => { debug(message) })
   await sleep(1000)
-  logmc("§6[§bTPM§6] §3Finished getting slot data")
+  if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+  logmc("§6[§bTPM§6] §3Finished getting slot data");
+  recentPurse = getPurse(bot, recentPurse);
   if (cookieDuration <= 24 && autoCookie) {
-    if (await getPurse(bot) < await getCookiePrice()) {
+    if (recentPurse < await getCookiePrice()) {
       logmc("§6[§bTPM§6] §cHaha you're poor and can't afford a cookie");
     } else {
       logmc("§6[§bTPM§6] §3Buying new cookie because yours will expire soon")
@@ -953,9 +955,9 @@ async function start() {
           const ahhhhh = webhookPricing[command];
           debug("WebhookPricing:",JSON.stringify(ahhhhh));
           if (ahhhhh) {//crash :(
-            const ahid = ahhhhh.auctionId
-            bot.state = current.state;
             if (!bot.currentWindow) {
+              const ahid = ahhhhh.auctionId
+              bot.state = current.state;
               bedFailed = true;
               debug('Bed is now failed')
               currentOpen = ahid
@@ -1287,7 +1289,10 @@ async function start() {
       bot.state = null;
       const item = match33[1];
       const auctionUrl = `https://sky.coflnet.com/auction/${lastListedIds.shift()}`;
-      const purse = formatNumber(await getPurse(bot));
+      const purse = formatNumber(getPurse(bot, recentPurse));
+      setTimeout(() => {
+        recentPurse = getPurse(bot);
+      }, 1000)
       if (webhook) {
         const embed = new MessageBuilder()
           .setFooter(`The "Perfect" Macro - Purse: ${purse}`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
@@ -1379,8 +1384,10 @@ async function start() {
       const itemBed = showBed ? webhookPricing[item].bed : "";
       const auctionUrl = `https://sky.coflnet.com/auction/${webhookPricing[item].auctionId}`;
       const profit = utils.IHATETAXES(webhookPricing[item].target) - utils.onlyNumbers(price);
-      //console.log("purse test", await getPurse(bot), "price", price);
-      const purse = utils.formatNumber(await getPurse(bot) - parseInt(String(price).replace(/,/g, ''), 10));
+      const purse = utils.formatNumber(getPurse(bot, recentPurse) - parseInt(String(price).replace(/,/g, ''), 10));
+      setTimeout(() => {
+        recentPurse = getPurse(bot);
+      }, 1000)
       if (webhook) {
         if (profit < 100_000_000) {
           const embed = new MessageBuilder()
@@ -1449,9 +1456,12 @@ async function start() {
       const buyer = match2[1];
       const item = match2[2];
       const price = utils.onlyNumbers(match2[3]);
-      //console.log("purse test BOUGHT", await getPurse(bot), "price", price);
+      //console.log("purse test BOUGHT", await getPurse(bot, recentPurse), "price", price);
       if (webhook) {
-        const purse = utils.formatNumber(await getPurse(bot) + parseInt(String(price).replace(/,/g, ''), 10));
+        const purse = utils.formatNumber(getPurse(bot, recentPurse) + parseInt(String(price).replace(/,/g, ''), 10));
+        setTimeout(() => {
+          recentPurse = getPurse(bot);
+        }, 5000)
         const embed = new MessageBuilder()
           .setFooter(`The "Perfect" Macro - Purse: ${purse} `, `https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437`)
           .setTitle('Item Sold')
@@ -1758,13 +1768,13 @@ async function start() {
   };
   ws.on('getInventory', sendInventoy);
   bot.on('windowOpen', sendInventoy);
-  async function itemLoad(slot, alradyLoaded = false) {
+  async function itemLoad(slot, alreadyLoaded = false) {
     return new Promise((resolve, reject) => {
       let index = 1;
       const first = bot.currentWindow?.slots[slot];
       const interval = setInterval(() => {
         const check = bot.currentWindow?.slots[slot];
-        if ((check && !alradyLoaded) || (alradyLoaded && check !== first)) {
+        if ((check && !alreadyLoaded) || (alreadyLoaded && check !== first)) {
           clearInterval(interval);
           resolve(check);
           debug(`Found item on ${index}`);
