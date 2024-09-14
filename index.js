@@ -142,6 +142,7 @@ let totalslots = 17;
 let currentlisted = 0;
 let closedGui = false;
 let bedFailed = false;
+/** @type {mineflayer.Bot & {state?: string}} */
 let bot;
 let cdClaim = 0;
 let quickProfit;
@@ -158,6 +159,8 @@ let buyspeed, confirmAt, oldConfirmAt;
 let useSkipOnFlip = false;
 let recentlySkipped = false;
 let recentPurse = false;
+let lastID = null;
+let lastIDTime = Date.now();
 
 function betterClick(slot, mode1 = 0, mode2 = 0) {
   if (!bot.currentWindow) {
@@ -1573,7 +1576,24 @@ async function start() {
         itemName = data.itemName.replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "");
         let reasons = [];
         if (bot.state) reasons.push(`bot state is ${bot.state}`);
-        if (bot.currentWindow) reasons.push(`${getWindowName(bot.currentWindow)} is open`);
+        if (bot.currentWindow) {
+          if (lastID === bot.currentWindow.id && Date.now() - lastIDTime < 5000) {
+            debug(`Last ID: ${lastID} Current ID: ${bot.currentWindow.id}`)
+            lastIDTime = Date.now();
+            lastID = bot.currentWindow.id;
+            guiName = getWindowName(bot.currentWindow);
+            if (bot.currentWindow) { bot.closeWindow(bot.currentWindow); }
+            lastAction = Date.now();
+            await sleep(200)
+            bot.state = null;
+            logmc(`§6[§bTPM§6] §cClosed the window ${guiName} because it was the same as the last one to hopefully fix the weird bug (if you keep getting the pipeline error message bc of a certain window report)`)
+          } else {
+            lastIDTime = Date.now();
+            reasons.push(`${getWindowName(bot.currentWindow)} is open`);
+          }
+          lastID = bot.currentWindow.id;
+          debug(`[After update] Last ID: ${lastID} Current ID: ${bot.currentWindow.id}`)
+        }
         if (currentTime - lastAction < delay) reasons.push(`the last action was too recent`);
         if (bot.state !== 'moving' && bot.state !== 'paused') {
           logmc(`§3Adding ${itemName}§3 to the pipeline because ${reasons.join(' and ')}!`);

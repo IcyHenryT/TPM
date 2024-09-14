@@ -379,7 +379,7 @@ async function putInAh(bot, slot = 63) {
         betterClick(15, 0, 0, bot)
         await betterOnce(bot, 'windowOpen')
         await sleep (250)
-        if (!bot.currentWindow.slots[13].name == 'stone_button') {
+        if (!(bot.currentWindow.slots[13].name == 'stone_button')) {
             logmc("§6[§bTPM§6] §cThere was already an item in the creation slot, attempting to remove it [Auto Cookie]")
             await removeFromAh(bot, "moving")
         } //otherwise item is unactionable
