@@ -6,7 +6,7 @@ const defaultConfig = `{
   // Put username of your account here.
   "username": "",
   
-  // Put your discord webhook here.
+  // Put your discord webhook here. (if u wanna send to multiple places make this an array of webhooks (if you dont know what that means letme introduce you to chat.openai.com))
   "webhook": "",
   
   //true or false
