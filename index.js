@@ -749,7 +749,7 @@ async function start() {
     version: '1.8.9',
     host: 'play.hypixel.net',
   });
-  
+
 
   await makePackets(bot._client);
   giveTheFunStuff(bot, handleCommand);
@@ -1062,11 +1062,11 @@ async function start() {
   });
   bot.on('scoreboardCreated', utils.throttle(async (scoreboard, updated) => {
     //if (Date.now() - lastCrated < 500) {
-      lastCrated = Date.now();
-      await sleep(2000)
-      bot.chat("/locraw")
+    lastCrated = Date.now();
+    await sleep(2000)
+    bot.chat("/locraw")
     //}
-  }),500);
+  }), 500);
   bot.on('error', e => {
     // error :(
     error(e);
@@ -1287,8 +1287,8 @@ async function start() {
         }
 
         break;
-      }
-  if (text.includes(`"map":"Private Island"`)) {
+    }
+    if (text.includes(`"map":"Private Island"`)) {
       await sleep(2000)
       if (friendIsland && !happened) {
         //console.log("friend island", friendIsland) 
@@ -1296,7 +1296,7 @@ async function start() {
         //await sleep(5000)
         //console.log("/visit " + friendIsland)
         bot.chat(`/visit ${friendIsland}`)
-        await betterOnce(bot, 'windowOpen'); 
+        await betterOnce(bot, 'windowOpen');
         if (!(nbt.simplify(bot.currentWindow.slots[11].nbt)?.display?.Lore?.find(line => line?.includes("Already on island!")))) {
           await sleep(2000)
           stillacat = await visitFrend(bot, friendIsland)
@@ -1311,11 +1311,11 @@ async function start() {
       }
       debug("Current location updated to island")
       if (bot.state === 'moving') bot.state = null;
-      if (!ranit){
-          getReady()
+      if (!ranit) {
+        getReady()
       }
-  }
-  if (text.includes(`"map":"Hub"`)) {
+    }
+    else if (text.includes(`"gametype":"SKYBLOCK"`)) {
       bot.state = 'moving';
       await sleep(2000)
       debug("Currently in hub, attempting to go to island!")
@@ -1328,72 +1328,72 @@ async function start() {
       } else {
         bot.chat("/is")
       }
-  }
-  if (text.includes(`"gametype":"PROTOTYPE"`)) {
+    }
+    if (text.includes(`"gametype":"PROTOTYPE"`)) {
       bot.state = 'moving';
       await sleep(2000)
       debug("Currently in lobby, attempting to go to skyblock!")
       location = "lobby"
       bot.chat("/skyblock")
-  }
-  if (text.includes(`"gametype":"MAIN"`)) {
+    }
+    if (text.includes(`"gametype":"MAIN"`)) {
       bot.state = 'moving';
       await sleep(2000)
       debug("Currently in lobby, attempting to go to skyblock!")
       location = "lobby"
       bot.chat("/skyblock")
-  }
-  if (text.includes(`"gametype":"BEDWARS"`)) {
+    }
+    if (text.includes(`"gametype":"BEDWARS"`)) {
       bot.state = 'moving';
       await sleep(2000)
       debug("Currently in lobby, attempting to go to skyblock!")
       location = "lobby"
       bot.chat("/skyblock")
-  }
-  if (text.includes(`"gametype":"SKYWARS"`)) {
+    }
+    if (text.includes(`"gametype":"SKYWARS"`)) {
       bot.state = 'moving';
       await sleep(2000)
       debug("Currently in lobby, attempting to go to skyblock!")
       location = "lobby"
       bot.chat("/skyblock")
-  }
-  if (text.includes(`"gametype":"WOOL_GAMES"`)) {
+    }
+    if (text.includes(`"gametype":"WOOL_GAMES"`)) {
       bot.state = 'moving';
       await sleep(2000)
       debug("Currently in lobby, attempting to go to skyblock!")
       location = "lobby"
       bot.chat("/skyblock")
-  }
-  if (text.includes("You were kicked while joining that server!")) {
+    }
+    if (text.includes("You were kicked while joining that server!")) {
       bot.state = 'moving';
       await sleep(5000)
       bot.chat("/play sb")
       debug("Warping to skyblock")
-  }
-  if (text.includes("Cannot join SkyBlock")) {
-    bot.state = 'moving';
+    }
+    if (text.includes("Cannot join SkyBlock")) {
+      bot.state = 'moving';
       await sleep(5000)
       bot.chat("/play sb")
       debug("Warping to skyblock")
-  }
-  if (text.includes("Cannot send chat message")) {
-    bot.state = 'moving';
+    }
+    if (text.includes("Cannot send chat message")) {
+      bot.state = 'moving';
       await sleep(5000)
       debug("Warping to lobby")
       bot.chat("/l")
-  }
-  if (text.includes("There was a problem joining SkyBlock, try again in a moment!")) {
-    bot.state = 'moving';
+    }
+    if (text.includes("There was a problem joining SkyBlock, try again in a moment!")) {
+      bot.state = 'moving';
       await sleep(5000)
       debug("Warping to lobby")
       bot.chat("/skyblock")
-  }
-  if (text.includes("Couldn't warp you! Try again later.")) {
-    bot.state = 'moving';
+    }
+    if (text.includes("Couldn't warp you! Try again later.")) {
+      bot.state = 'moving';
       await sleep(5000)
       bot.chat("/locraw")
       debug("rechecking location bc warp failed")
-  }
+    }
 
     if (/You claimed (.+?) from (?:\[.*?\] )?(.+?)'s auction!/.test(text) && config.relist && text.startsWith('You')) {
       relistClaim = true;
@@ -1432,7 +1432,8 @@ async function start() {
       let lastPurchasedTarget;
       let lastPurchasedFinder;
       const item = utils.noColorCodes(match1[1]).replace(/!|-us|\.|\b(?:[1-9]|[1-5][0-9]|6[0-4])x\b/g, "");
-      const object = relistObject[item]
+      const object = relistObject[item];
+      debug(`Object after buying: ${JSON.stringify(object)}`)
       if (lastOpenedAhids.length > 0 && config.relist) {
         if (object) {
           lastPurchasedAhid = object.id
@@ -1692,10 +1693,10 @@ async function start() {
         let reasons = [];
         if (bot.state) reasons.push(`bot state is ${bot.state}`);
         if (bot.currentWindow) {
-          if (lastID === bot.currentWindow.id && Date.now() - lastIDTime < 5000) {
-            debug(`Last ID: ${lastID} Current ID: ${bot.currentWindow.id}`)
+          if (lastID === bot.currentWindow?.id && Date.now() - lastIDTime < 5000 && lastID) {
+            debug(`Last ID: ${lastID} Current ID: ${bot.currentWindow?.id}`)
             lastIDTime = Date.now();
-            lastID = bot.currentWindow.id;
+            lastID = bot.currentWindow?.id;
             guiName = getWindowName(bot.currentWindow);
             if (bot.currentWindow) { bot.closeWindow(bot.currentWindow); }
             lastAction = Date.now();
@@ -1706,8 +1707,8 @@ async function start() {
             lastIDTime = Date.now();
             reasons.push(`${getWindowName(bot.currentWindow)} is open`);
           }
-          lastID = bot.currentWindow.id;
-          debug(`[After update] Last ID: ${lastID} Current ID: ${bot.currentWindow.id}`)
+          lastID = bot.currentWindow?.id;
+          debug(`[After update] Last ID: ${lastID} Current ID: ${bot.currentWindow?.id}`)
         }
         if (currentTime - lastAction < delay) reasons.push(`the last action was too recent`);
         if (bot.state !== 'moving' && bot.state !== 'paused') {
@@ -1875,11 +1876,13 @@ async function start() {
   }
   ws.on('open', sendScoreboard);
   const settings = msg => {
+    console.log(msg);
     privacySettings = new RegExp(msg.chatRegex);
+    console.log(`Got settings, ${msg.chatRegex}`)
     ws.off('settings', settings);
   };
   ws.on('settings', settings);
-  bot.on('chat', (username, message, type) => {
+  bot.on('message', (message, type) => {
     if (!privacySettings) return;
     if (type === 'chat') {
       const msg = message.getText(null);

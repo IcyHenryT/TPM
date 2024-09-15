@@ -5,7 +5,7 @@ const axios = require('axios');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
 let { config, updateConfig } = require('./config.js');
 const { getPackets } = require('./packetStuff.js');
-const version = '1.4.7';
+const version = '1.4.8';
 let webhook;
 let id = config.discordID;
 const ws = new EventEmitter();
@@ -131,7 +131,7 @@ function parseMessage(message) {
             ws.emit('getInventory', msg);
             break;
         case "privacySettings":
-            ws.emit('settings', msg);
+            ws.emit('settings', fr);
             handleCommand(`/cofl flip always`)
             handleCommand('/cofl get json');
             /*setTimeout(() => {
