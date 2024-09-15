@@ -1876,9 +1876,8 @@ async function start() {
   }
   ws.on('open', sendScoreboard);
   const settings = msg => {
-    console.log(msg);
     privacySettings = new RegExp(msg.chatRegex);
-    console.log(`Got settings, ${msg.chatRegex}`)
+    debug(`Got settings, ${msg.chatRegex}`)
     ws.off('settings', settings);
   };
   ws.on('settings', settings);
