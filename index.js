@@ -1062,7 +1062,6 @@ async function start() {
   });
   bot.on('scoreboardCreated', utils.throttle(async (scoreboard, updated) => {
     //if (Date.now() - lastCrated < 500) {
-      console.log("hyethere")
       lastCrated = Date.now();
       await sleep(2000)
       bot.chat("/locraw")
