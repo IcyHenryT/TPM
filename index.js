@@ -143,7 +143,6 @@ let totalslots = 17;
 let currentlisted = 0;
 let closedGui = false;
 let bedFailed = false;
-/** @type {mineflayer.Bot & {state?: string}} */
 let bot;
 let cdClaim = 0;
 let quickProfit;

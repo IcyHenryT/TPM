@@ -575,12 +575,6 @@ async function visitFrend(bot, frend) {
     return 1;
 }
 
-/**
- *
- * @param {Function} func
- * @param {number} timeout
- * @returns
- */
 function throttle(func, timeout = 1000) {
     let lastCall = 0;
     return function (...args) {
