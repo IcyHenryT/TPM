@@ -1285,6 +1285,7 @@ async function start() {
       if (friendIsland) {
         await sleep(500)
         bot.chat(`/visit ${friendIsland}`)
+        await betterOnce(bot, 'windowOpen');
         if (!(nbt.simplify(bot.currentWindow.slots[11].nbt).display.Lore.find(line => line.includes("Already on island!")))) {
           stillacat = await visitFrend(bot, friendIsland)
           if (!stillacat) {
