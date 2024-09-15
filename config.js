@@ -62,6 +62,9 @@ const defaultConfig = `{
   //Will use skip if finder is user [WILL STILL WORK IF USESKIP IS FALSE SO SET THIS ACCORDINGLY]
   "skipUser": false,
 
+  //Flip on frend island (i am NOT adding a check for if their island is closed so if youre dumb with this its your fault L bozo) (put frend ign between the quotes and leave as "" for nothing)
+  "friendIsland": "",
+
   "doNotList":{
 
     //Finders to not list. Options: USER, CraftCost, TFM, AI, SNIPER, STONKS, FLIPPER

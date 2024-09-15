@@ -9,7 +9,7 @@ const utils = require(`./utils.js`);
 const { randomUUID } = require('crypto');
 const axios = require('axios');
 const stateManger = require(`./state.js`);
-const { noColorCodes, sendDiscord, nicerFinders, normalizeDate, TheBig3, getCookiePrice, IHATETAXES, randomWardenDye, formatNumber, sleep, getWindowName, getPurse, relistCheck, addCommasToNumber, betterOnce, normalNumber, sendPingStats, omgCookie, checkVersion } = require('./utils.js');
+const { noColorCodes, sendDiscord, nicerFinders, normalizeDate, TheBig3, getCookiePrice, IHATETAXES, randomWardenDye, formatNumber, sleep, getWindowName, getPurse, relistCheck, addCommasToNumber, betterOnce, normalNumber, sendPingStats, omgCookie, checkVersion, visitFrend } = require('./utils.js');
 const { MessageBuilder } = require('discord-webhook-node');
 const { getPackets, makePackets } = require('./packetStuff.js');
 const { silly, debug, error, info, logmc } = require('./logger.js');
@@ -20,7 +20,7 @@ const { config, updateConfig } = require('./config.js');
 const nbt = require('prismarine-nbt');
 const { sendFlip, giveTheFunStuff, updateSold, sendFlipFound } = require('./tpmWebsocket.js');
 
-let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip, showBed, privacy, autoCookie, dailyLimit, skipProfit, skipUser;
+let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip, showBed, privacy, autoCookie, dailyLimit, skipProfit, skipUser, friendIsland;
 
 function testign() {
   if (config.username.trim() === '') {
@@ -89,6 +89,7 @@ if (config.TOS.trim() === '') {
   testServer();
 }
 
+friendIsland = config.friendIsland;
 doNotList = config.doNotList;
 ign = config.username;
 webhook = config.webhook;
@@ -1013,47 +1014,47 @@ async function start() {
     //Auto join SB
     await checkVersion(botVersion)
     await bot.waitForChunksToLoad();
-    await sleep(5000);
     bot.state = 'moving';
-    bot.chat('/play sb');
-    await sleep(5000);
-    bot.chat('/is');//TODO change to IS
-    setInterval(() => {
-      const board = bot.scoreboard?.sidebar?.items;
-      if (!board) {
-        bot.chat('/l');
-        return;
-      }
-      let scoreboard = bot.scoreboard.sidebar.items.map(item => item.displayName.getText(null).replace(item.name, ''));
-      scoreboard.forEach(async line => {
-        if (line.includes('Village')) {
-          bot.state = 'moving';
-          logmc('§6[§bTPM§6] §cBot found in the hub :( going back to skyblock')
-          bot.chat('/is');
-          lastAction = Date.now();
-        }
-        if (line.includes('Rank:')) {
-          bot.state = 'moving';
-          logmc('§6[§bTPM§6] §cBot found in the lobby :( going back to skyblock')
-          bot.chat('/play sb');
-          lastAction = Date.now();
-        }
-        if (line.includes('bugs')) {
-          bot.state = 'moving';
-          logmc('§6[§bTPM§6] §cBot found in the lobby :( going back to skyblock')
-          bot.chat('/play sb');
-          lastAction = Date.now();
-        }
-        if (line.includes('Your Island')) {
-          if (!ranit) {
-            getReady()
-          } else {
-            if (bot.state === 'moving') bot.state = null;
-            lastAction = Date.now();
-          }
-        }
-      });
-    }, 30000);
+    // setInterval(() => {
+    //   const board = bot.scoreboard?.sidebar?.items;
+    //   if (!board) {
+    //     bot.chat('/l');
+    //     return;
+    //   }
+    //   let scoreboard = bot.scoreboard.sidebar.items.map(item => item.displayName.getText(null).replace(item.name, ''));
+    //   scoreboard.forEach(async line => {
+    //     if (line.includes('Village')) {
+    //       bot.state = 'moving';
+    //       logmc('§6[§bTPM§6] §cBot found in the hub :( going back to skyblock')
+    //       bot.chat('/is');
+    //       lastAction = Date.now();
+    //     }
+    //     if (line.includes('Rank:')) {
+    //       bot.state = 'moving';
+    //       logmc('§6[§bTPM§6] §cBot found in the lobby :( going back to skyblock')
+    //       bot.chat('/play sb');
+    //       lastAction = Date.now();
+    //     }
+    //     if (line.includes('bugs')) {
+    //       bot.state = 'moving';
+    //       logmc('§6[§bTPM§6] §cBot found in the lobby :( going back to skyblock')
+    //       bot.chat('/play sb');
+    //       lastAction = Date.now();
+    //     }
+    //     if (line.includes('Your Island')) {
+    //       if (!ranit) {
+    //         getReady()
+    //       } else {
+    //         if (bot.state === 'moving') bot.state = null;
+    //         lastAction = Date.now();
+    //       }
+    //     }
+    //   });
+    // }, 30000);
+  });
+  bot.on('scoreboardCreated', async (scoreboard, updated) => {
+    await sleep(2000)
+    bot.chat("/locraw")
   });
   bot.on('error', e => {
     // error :(
@@ -1278,7 +1279,107 @@ async function start() {
         }
 
         break;
-    }
+      }
+  if (text.includes(`"map":"Private Island"`)) {
+      await sleep(2000)
+      if (friendIsland) {
+        await sleep(500)
+        bot.chat(`/visit ${friendIsland}`)
+        if (!(nbt.simplify(bot.currentWindow.slots[11].nbt).display.Lore.find(line => line.includes("Already on island!")))) {
+          stillacat = await visitFrend(bot, friendIsland)
+          if (!stillacat) {
+            logmc("§6[§bTPM§6] §cYep ur on your own island but your friend island is closed idiot change it so you stay on island")
+          }
+        } else {
+          if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+        }
+      }
+      debug("Current location updated to island")
+      if (bot.state === 'moving') bot.state = null;
+      if (!ranit){
+          getReady()
+      }
+      //bot.chat("/viewauction 62ddcb9645d742cc89d250c9dc4fd7fc")
+  }
+  if (text.includes(`"map":"Hub"`)) {
+      bot.state = 'moving';
+      await sleep(2000)
+      debug("Currently in hub, attempting to go to island!")
+      location = "hub"
+      if (friendIsland) {
+        omgitscat = await visitFrend(bot, friendIsland)
+        if (!omgitscat) {
+          bot.chat("/is")
+        }
+      } else {
+        bot.chat("/is")
+      }
+  }
+  if (text.includes(`"gametype":"PROTOTYPE"`)) {
+      bot.state = 'moving';
+      await sleep(2000)
+      debug("Currently in lobby, attempting to go to skyblock!")
+      location = "lobby"
+      bot.chat("/skyblock")
+  }
+  if (text.includes(`"gametype":"MAIN"`)) {
+      bot.state = 'moving';
+      await sleep(2000)
+      debug("Currently in lobby, attempting to go to skyblock!")
+      location = "lobby"
+      bot.chat("/skyblock")
+  }
+  if (text.includes(`"gametype":"BEDWARS"`)) {
+      bot.state = 'moving';
+      await sleep(2000)
+      debug("Currently in lobby, attempting to go to skyblock!")
+      location = "lobby"
+      bot.chat("/skyblock")
+  }
+  if (text.includes(`"gametype":"SKYWARS"`)) {
+      bot.state = 'moving';
+      await sleep(2000)
+      debug("Currently in lobby, attempting to go to skyblock!")
+      location = "lobby"
+      bot.chat("/skyblock")
+  }
+  if (text.includes(`"gametype":"WOOL_GAMES"`)) {
+      bot.state = 'moving';
+      await sleep(2000)
+      debug("Currently in lobby, attempting to go to skyblock!")
+      location = "lobby"
+      bot.chat("/skyblock")
+  }
+  if (text.includes("You were kicked while joining that server!")) {
+      bot.state = 'moving';
+      await sleep(5000)
+      bot.chat("/play sb")
+      debug("Warping to skyblock")
+  }
+  if (text.includes("Cannot join SkyBlock")) {
+    bot.state = 'moving';
+      await sleep(5000)
+      bot.chat("/play sb")
+      debug("Warping to skyblock")
+  }
+  if (text.includes("Cannot send chat message")) {
+    bot.state = 'moving';
+      await sleep(5000)
+      debug("Warping to lobby")
+      bot.chat("/l")
+  }
+  if (text.includes("There was a problem joining SkyBlock, try again in a moment!")) {
+    bot.state = 'moving';
+      await sleep(5000)
+      debug("Warping to lobby")
+      bot.chat("/skyblock")
+  }
+  if (text.includes("Couldn't warp you! Try again later.")) {
+    bot.state = 'moving';
+      await sleep(5000)
+      bot.chat("/locraw")
+      debug("rechecking location bc warp failed")
+  }
 
     if (/You claimed (.+?) from (?:\[.*?\] )?(.+?)'s auction!/.test(text) && config.relist && text.startsWith('You')) {
       relistClaim = true;

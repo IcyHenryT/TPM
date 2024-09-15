@@ -559,6 +559,21 @@ async function getCookiePrice() {
 
 async function checkVersion(currVersion) { try { const { data: { tag_name: latestVersion } } = await axios.get("https://api.github.com/repos/IcyHenryT/TPM/releases/latest"); latestVersion.split('.').some((version, i) => version > (currVersion.split('.')[i] || 0)) && logmc("§6[§bTPM§6] §c new version" + latestVersion + " available, you should totally update to the new one and relaunch!! :DD [Current: " + currVersion + "]"); } catch (e) { } }
 
+async function visitFrend(bot, frend) {
+    if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
+    await sleep(500)
+    bot.chat(`/visit ${frend}`)
+    await betterOnce(bot, 'windowOpen')
+    await sleep(150)
+    if (!(nbt.simplify(bot.currentWindow.slots[11].nbt).display.Lore.find(line => line.includes("Island disallows guests!")))) {
+        betterClick(11, 0, 0, bot)
+    } else {
+        logmc(`§6[§bTPM§6] §cidiot dummystupid you set it to a closed islandi hate u this is only so bot doesnt crash change it aaaaaaaaaaaaaaaaaaaaaaaaaaaa!`);
+        return 0;
+    }
+    return 1;
+}
+
 
 const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
-module.exports = { noColorCodes, sendDiscord, randomWardenDye, sendPingStats, onlyNumbers, normalizeDate, normalNumber, IHATETAXES, formatNumber, sleep, checkHypixelPing, TheBig3, checkCoflDelay, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders, betterOnce, checkCoflPing, omgCookie, removeFromAh, getCookiePrice, checkVersion }
+module.exports = { noColorCodes, sendDiscord, randomWardenDye, sendPingStats, onlyNumbers, normalizeDate, normalNumber, IHATETAXES, formatNumber, sleep, checkHypixelPing, TheBig3, checkCoflDelay, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders, betterOnce, checkCoflPing, omgCookie, removeFromAh, getCookiePrice, checkVersion, visitFrend }
