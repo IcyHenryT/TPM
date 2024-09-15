@@ -5,6 +5,7 @@ const { Webhook, MessageBuilder } = require('discord-webhook-node');
 const { config } = require('./config.js');
 const { getPackets } = require('./packetStuff.js');
 const axios = require('axios');
+const nbt = require('prismarine-nbt');
 
 let tries = 0;
 let webhook = config.webhook;
@@ -561,7 +562,7 @@ async function checkVersion(currVersion) { try { const { data: { tag_name: lates
 
 async function visitFrend(bot, frend) {
     if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
-    await sleep(500)
+    await sleep(1000)
     bot.chat(`/visit ${frend}`)
     await betterOnce(bot, 'windowOpen')
     await sleep(150)
@@ -574,6 +575,21 @@ async function visitFrend(bot, frend) {
     return 1;
 }
 
+/**
+ *
+ * @param {Function} func
+ * @param {number} timeout
+ * @returns
+ */
+function throttle(func, timeout = 1000) {
+    let lastCall = 0;
+    return function (...args) {
+      const now = Date.now();
+      if (now - lastCall < timeout) return;
+      lastCall = now;
+      return func(...args);
+    };
+  }
 
 const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
-module.exports = { noColorCodes, sendDiscord, randomWardenDye, sendPingStats, onlyNumbers, normalizeDate, normalNumber, IHATETAXES, formatNumber, sleep, checkHypixelPing, TheBig3, checkCoflDelay, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders, betterOnce, checkCoflPing, omgCookie, removeFromAh, getCookiePrice, checkVersion, visitFrend }
+module.exports = { noColorCodes, sendDiscord, randomWardenDye, sendPingStats, onlyNumbers, normalizeDate, normalNumber, IHATETAXES, formatNumber, sleep, checkHypixelPing, TheBig3, checkCoflDelay, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders, betterOnce, checkCoflPing, omgCookie, removeFromAh, getCookiePrice, checkVersion, visitFrend, throttle }

@@ -162,6 +162,8 @@ let recentlySkipped = false;
 let recentPurse = false;
 let lastID = null;
 let lastIDTime = Date.now();
+let lastCrated = Date.now() + 50000;
+let happened = false;
 
 function betterClick(slot, mode1 = 0, mode2 = 0) {
   if (!bot.currentWindow) {
@@ -748,22 +750,29 @@ async function start() {
     version: '1.8.9',
     host: 'play.hypixel.net',
   });
+  
+
   await makePackets(bot._client);
   giveTheFunStuff(bot, handleCommand);
   packets = getPackets();
-  bot.once('login', () => {
-    axios.get(`https://api.mojang.com/users/profiles/minecraft/${bot.username}`)
-      .then(response => {
+  bot.once("login", () => {
+    // const _botchat = bot.chat;
+    // bot.chat = (...args) => {
+    //   console.log(`[CHAT] ${args.join(" ")}`);
+    //   _botchat(...args);
+    // };
+    axios
+      .get(`https://api.mojang.com/users/profiles/minecraft/${bot.username}`)
+      .then((response) => {
         uuid = response.data.id;
         config.uuid = uuid;
         config.username = bot.username;
         updateConfig(config);
       })
-      .catch(error => {
+      .catch((error) => {
         console.error(`Error fetching UUID for ign ${bot.username}:`, error);
       });
-
-  })
+  });
   bot.state = 'moving';
   let firstGui;
   bot._client.on('open_window', async (window) => {
@@ -1052,16 +1061,17 @@ async function start() {
     //   });
     // }, 30000);
   });
-  bot.on('scoreboardCreated', async (scoreboard, updated) => {
-    await sleep(2000)
-    bot.chat("/locraw")
-  });
+  bot.on('scoreboardCreated', utils.throttle(async (scoreboard, updated) => {
+    //if (Date.now() - lastCrated < 500) {
+      console.log("hyethere")
+      lastCrated = Date.now();
+      await sleep(2000)
+      bot.chat("/locraw")
+    //}
+  }),500);
   bot.on('error', e => {
     // error :(
     error(e);
-  });
-  bot.on('login', () => {
-    bot.chat('/locraw');
   });
   bot.on('message', async (message, type) => {
     let text = message.getText(null);
@@ -1282,18 +1292,24 @@ async function start() {
       }
   if (text.includes(`"map":"Private Island"`)) {
       await sleep(2000)
-      if (friendIsland) {
+      if (friendIsland && !happened) {
+        //console.log("friend island", friendIsland) 
         await sleep(500)
+        //await sleep(5000)
+        //console.log("/visit " + friendIsland)
         bot.chat(`/visit ${friendIsland}`)
-        await betterOnce(bot, 'windowOpen');
+        await betterOnce(bot, 'windowOpen'); 
         if (!(nbt.simplify(bot.currentWindow.slots[11].nbt).display.Lore.find(line => line.includes("Already on island!")))) {
+          await sleep(2000)
           stillacat = await visitFrend(bot, friendIsland)
+          await sleep(3000)
           if (!stillacat) {
             logmc("§6[§bTPM§6] §cYep ur on your own island but your friend island is closed idiot change it so you stay on island")
           }
         } else {
           if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
         }
+        happened = true;
       }
       debug("Current location updated to island")
       if (bot.state === 'moving') bot.state = null;
