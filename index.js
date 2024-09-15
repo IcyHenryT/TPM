@@ -1298,7 +1298,7 @@ async function start() {
         //console.log("/visit " + friendIsland)
         bot.chat(`/visit ${friendIsland}`)
         await betterOnce(bot, 'windowOpen'); 
-        if (!(nbt.simplify(bot.currentWindow.slots[11].nbt).display.Lore.find(line => line.includes("Already on island!")))) {
+        if (!(nbt.simplify(bot.currentWindow.slots[11].nbt)?.display?.Lore?.find(line => line?.includes("Already on island!")))) {
           await sleep(2000)
           stillacat = await visitFrend(bot, friendIsland)
           await sleep(3000)
@@ -1315,7 +1315,6 @@ async function start() {
       if (!ranit){
           getReady()
       }
-      //bot.chat("/viewauction 62ddcb9645d742cc89d250c9dc4fd7fc")
   }
   if (text.includes(`"map":"Hub"`)) {
       bot.state = 'moving';
