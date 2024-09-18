@@ -15,6 +15,10 @@ if (webhook && !Array.isArray(webhook)) {
     webhook.setAvatar('https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless');
 }
 
+let id = config.discordID;
+let ping = "";
+if (id) ping = `<@${id}>`;
+
 function noColorCodes(text) {
     return text.replace(/§./g, '').replace('§', '')//cofl sometimes sends messages that are cut off so I need the second one aswell
 }
@@ -379,7 +383,7 @@ async function putInAh(bot, slot = 63) {
     if (getWindowName(bot.currentWindow)?.includes('Auction House') || getWindowName(bot.currentWindow)?.includes('Co-op Auction House')) {
         betterClick(15, 0, 0, bot)
         await betterOnce(bot, 'windowOpen')
-        await sleep (250)
+        await sleep(250)
         if (!(bot.currentWindow.slots[13].name == 'stone_button')) {
             logmc("§6[§bTPM§6] §cThere was already an item in the creation slot, attempting to remove it [Auto Cookie]")
             await removeFromAh(bot, "moving")
@@ -578,12 +582,57 @@ async function visitFrend(bot, frend) {
 function throttle(func, timeout = 1000) {
     let lastCall = 0;
     return function (...args) {
-      const now = Date.now();
-      if (now - lastCall < timeout) return;
-      lastCall = now;
-      return func(...args);
+        const now = Date.now();
+        if (now - lastCall < timeout) return;
+        lastCall = now;
+        return func(...args);
     };
-  }
+}
 
 const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
+
+process.on('uncaughtException', async (err) => {
+    error('There was an uncaught exception:', err);
+    const webhhookData = {
+        username: "TPM",
+        avatar_url: "https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless",
+        content: ping,
+        embeds: [{
+            title: 'Yooo we crashed :(',
+            color: 15755110,
+            description: `Reason: ${err} report this to a TPM dev!`,
+        }]
+    }
+    if (Array.isArray(config.webhook)) {
+        for (const hook of config.webhook) {
+            await axios.post(hook, webhhookData);
+        }
+    } else {
+        await axios.post(config.webhook, webhhookData);
+    }
+    process.exit(1);
+});
+
+process.on('unhandledRejection', async (reason) => {
+    error('There was an uncaught exception:', reason);
+    const webhhookData = {
+        username: "TPM",
+        avatar_url: "https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless",
+        content: ping,
+        embeds: [{
+            title: 'Yooo we crashed :(',
+            color: 15755110,
+            description: `Reason: ${reason} report this to a TPM dev!`,
+        }]
+    }
+    if (Array.isArray(config.webhook)) {
+        for (const hook of config.webhook) {
+            await axios.post(hook, webhhookData);
+        }
+    } else {
+        await axios.post(config.webhook, webhhookData);
+    }
+    process.exit(1);
+});
+
 module.exports = { noColorCodes, sendDiscord, randomWardenDye, sendPingStats, onlyNumbers, normalizeDate, normalNumber, IHATETAXES, formatNumber, sleep, checkHypixelPing, TheBig3, checkCoflDelay, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders, betterOnce, checkCoflPing, omgCookie, removeFromAh, getCookiePrice, checkVersion, visitFrend, throttle }

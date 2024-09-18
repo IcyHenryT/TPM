@@ -20,7 +20,7 @@ const { config, updateConfig } = require('./config.js');
 const nbt = require('prismarine-nbt');
 const { sendFlip, giveTheFunStuff, updateSold, sendFlipFound } = require('./tpmWebsocket.js');
 
-let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip, showBed, privacy, autoCookie, dailyLimit, skipProfit, skipUser, friendIsland;
+let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip, showBed, privacy, autoCookie, dailyLimit, skipProfit, skipUser, friendIsland, underMinProfit;
 
 function testign() {
   if (config.username.trim() === '') {
@@ -111,6 +111,7 @@ showBed = config.showBed || false;
 badFinders = doNotList?.finders ? doNotList?.finders : ['USER'];
 dontListProfitOver = normalNumber(doNotList?.profitOver) ? normalNumber(doNotList?.profitOver) : 50_000_000;
 dontListItems = doNotList?.itemTags ? doNotList?.itemTags : ['HYPERION'];
+underMinProfit = doNotList?.underMinProfit ? doNotList?.underMinProfit : true;
 dontListSkins = doNotList?.skins || true;
 privacy = config.keepEverythingPrivate;
 autoCookie = config.autoCookie;
@@ -184,12 +185,12 @@ async function getReady() {
     debug("sbmenu opened")
     bot.once('windowOpen', async (window) => {
 
-      if (!nbt.simplify(bot.currentWindow.slots[51].nbt).display.Lore.find(line => line.includes("Duration:"))) {
+      if (!nbt.simplify(bot?.currentWindow?.slots[51]?.nbt)?.display?.Lore?.find(line => line?.includes("Duration:"))) {
         debug("No active cookie found, will start to get one");
       }
 
-      if (nbt.simplify(bot.currentWindow.slots[51].nbt).display.Lore.find(line => line.includes("Duration:"))) {
-        let duration = nbt.simplify(bot.currentWindow.slots[51].nbt).display.Lore.find(line => line.includes("Duration:")).replace(/§./g, "").replace("Duration: ", "")
+      if (nbt.simplify(bot?.currentWindow?.slots[51]?.nbt)?.display?.Lore?.find(line => line?.includes("Duration:"))) {
+        let duration = nbt.simplify(bot?.currentWindow?.slots[51]?.nbt)?.display?.Lore?.find(line => line.includes("Duration:")).replace(/§./g, "").replace("Duration: ", "")
 
         let yearsMatch = duration.match(/(\d+)y/)
         let daysMatch = duration.match(/(\d+)d/)
@@ -232,7 +233,7 @@ async function getReady() {
                 //console.log("here1")
                 let itemNbt = nbt.simplify(item.nbt)
                 let coop;
-                try { coop = itemNbt.display.Lore.find(line => line.includes("Co-op with")).replace(/§./g, "") } catch { }
+                try { coop = itemNbt.display.Lore?.find(line => line.includes("Co-op with")).replace(/§./g, "") } catch { }
                 if (coop) {
                   // Regular expressions for the two formats
                   const coopRegexPlayers = /Co-op with (\d+) players:/;
@@ -467,6 +468,19 @@ async function getReady() {
   bot.state = null;
   startWS(session);
   lastAction = Date.now();
+  if(underMinProfit){
+    const getMinProfit = (settings) =>{
+      const data = JSON.parse(settings.data);
+      data.forEach(setting => {
+        if(setting.key === "minProfit"){
+          underMinProfit = setting.value;
+          ws.off("jsonSettings", getMinProfit);
+          return;
+        }
+      })
+    }
+    ws.on("jsonSettings", getMinProfit);
+  }
 }
 
 async function relistHandler(purchasedAhids, purchasedPrices) {
@@ -749,7 +763,6 @@ async function start() {
     version: '1.8.9',
     host: 'play.hypixel.net',
   });
-
 
   await makePackets(bot._client);
   giveTheFunStuff(bot, handleCommand);
@@ -1124,7 +1137,7 @@ async function start() {
                 content: ping,
                 embeds: [{
                   title: 'Your cookie is gone :(',
-                  color: 16629250,
+                  color: 15755110,
                   fields: [
                     {
                       name: '',
@@ -1154,7 +1167,7 @@ async function start() {
                 .setTitle('Your cookie is gone :(')
                 .addField('', `You can't flip!!!`)
                 .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
-                .setColor(9830424);
+                .setColor(15755110);
               sendDiscord(embed);
             }
           }
@@ -1179,7 +1192,7 @@ async function start() {
               content: ping,
               embeds: [{
                 title: 'Your cookie is almost gone!',
-                color: 16629250,
+                color: 15755110,
                 fields: [
                   {
                     name: '',
@@ -1209,7 +1222,7 @@ async function start() {
               .setTitle('Your cookie is almost gone!')
               .addField('', whMessage)
               .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
-              .setColor(9830424);
+              .setColor(15755110);
             sendDiscord(embed)
           }
         }
@@ -1247,7 +1260,7 @@ async function start() {
               content: ping,
               embeds: [{
                 title: 'Auction house bid limit!',
-                color: 16629250,
+                color: 15755110,
                 fields: [
                   {
                     name: '',
@@ -1277,7 +1290,7 @@ async function start() {
               .setTitle('Auction house bid limit!')
               .addField('', messageyyY)
               .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
-              .setColor(9830424);
+              .setColor(15755110);
             sendDiscord(embed);
           }
         }
@@ -1443,7 +1456,7 @@ async function start() {
           const profit = object.profit;
           if (!badFinders?.includes(lastPurchasedFinder)) {
             if (!dontListItems.includes(itemTag)) {
-              if (profit < dontListProfitOver && profit > 0) {
+              if (profit < dontListProfitOver && profit > 0 && (!underMinProfit || profit > underMinProfit)) {
                 if (dontListSkins && (!item.includes('✦') && !item.toLowerCase().includes('skin') && !item.includes('✿'))) {
                   purchasedFinders.push(lastPurchasedFinder);
                   setTimeout(async () => {

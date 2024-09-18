@@ -81,7 +81,10 @@ const defaultConfig = `{
     ],
 
     //Dont list any item with a skin or any skins
-    "skins": true
+    "skins": true,
+
+    //Doesn't list any flips under your minium profit
+    "underMinProfit": true
 
   },
 

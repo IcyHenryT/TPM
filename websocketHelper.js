@@ -5,7 +5,7 @@ const axios = require('axios');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
 let { config, updateConfig } = require('./config.js');
 const { getPackets } = require('./packetStuff.js');
-const version = '1.4.8';
+const version = '1.4.9';
 let webhook;
 let id = config.discordID;
 const ws = new EventEmitter();
@@ -98,24 +98,14 @@ function parseMessage(message) {
             ws.emit("messageText", text);
             return text;
         case "execute":
-            debug(JSON.stringify(message));
-            let execData = msg.data
-            if (execData.includes('/cofl ping')) {
-                let dataParts = execData.slice(1, -1).split(' ');
-                dataParts.shift();
-                dataParts.shift();
-                dataParts = '"' + dataParts.join(' ') + '"';
-                send(JSON.stringify({ type: 'ping', data: dataParts }));
-            } else if (execData.includes('/cofl')) {
-                if (execData.includes('loadconfig')) {
-                    execData = execData.replace(/"/g, '');
-                }
-                debug(`Handling command |${execData}|`);
-                handleCommand(execData);
+            debug(JSON.stringify(msg), fr);
+            if (fr.includes('/cofl')) {
+                debug(`Handling command |${fr}|`);
+                handleCommand(fr);
             } else {
                 const packets = getPackets();
                 if (!packets) return;
-                packets.sendMessage(execData);
+                packets.sendMessage(fr);
             }
             break;
         case "loggedIn":
@@ -152,15 +142,15 @@ function send(msg, type = true) {
     if (type) debug(`Sending ${msg}`);
 }
 function handleCommand(command) {
-    args = command.split(' ');
-    first = args[1];
+    const args = command.split(' ');
+    const first = args[1];
     args.shift();
     args.shift();
-    const joined = args.join(' ');
+    const joined = JSON.stringify(args.join(' '));
     send(
         JSON.stringify({
             type: first,
-            data: `"${joined}"`
+            data: joined
         })
     );
 }
@@ -175,7 +165,6 @@ function sidListener(newConfig) {
             const important = noColorCodes(data[1].text);
             if (important.includes('Please click this [LINK]')) {
                 logmc(`§6[§bTPM§6] §9Use ${data[1].onClick} to log in!`);
-                //console.log(`Found reg socket login`)
                 sidStep++;
                 ws.on('settings', loggedIn)
                 ws.off('message', onMessage)
