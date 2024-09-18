@@ -1342,35 +1342,7 @@ async function start() {
         bot.chat("/is")
       }
     }
-    if (text.includes(`"gametype":"PROTOTYPE"`)) {
-      bot.state = 'moving';
-      await sleep(2000)
-      debug("Currently in lobby, attempting to go to skyblock!")
-      location = "lobby"
-      bot.chat("/skyblock")
-    }
-    if (text.includes(`"gametype":"MAIN"`)) {
-      bot.state = 'moving';
-      await sleep(2000)
-      debug("Currently in lobby, attempting to go to skyblock!")
-      location = "lobby"
-      bot.chat("/skyblock")
-    }
-    if (text.includes(`"gametype":"BEDWARS"`)) {
-      bot.state = 'moving';
-      await sleep(2000)
-      debug("Currently in lobby, attempting to go to skyblock!")
-      location = "lobby"
-      bot.chat("/skyblock")
-    }
-    if (text.includes(`"gametype":"SKYWARS"`)) {
-      bot.state = 'moving';
-      await sleep(2000)
-      debug("Currently in lobby, attempting to go to skyblock!")
-      location = "lobby"
-      bot.chat("/skyblock")
-    }
-    if (text.includes(`"gametype":"WOOL_GAMES"`)) {
+    if (text.includes(`"server":"dynamiclobby`)) {
       bot.state = 'moving';
       await sleep(2000)
       debug("Currently in lobby, attempting to go to skyblock!")
