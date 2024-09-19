@@ -164,6 +164,7 @@ let lastID = null;
 let lastIDTime = Date.now();
 let lastCrated = Date.now() + 50000;
 let happened = false;
+let paused = false;
 
 function betterClick(slot, mode1 = 0, mode2 = 0) {
   if (!bot.currentWindow) {
@@ -942,7 +943,7 @@ async function start() {
     if (bot.state !== old) debug(`Bot state updated: ${bot.state}`);
     old = bot.state;
     const time = Date.now();
-    if (current && bot.state === null && time - lastAction > delay) {
+    if (!paused && current && bot.state === null && time - lastAction > delay) {
       const command = current.command;
       lastAction = time;
       if (command === 'claim') {
@@ -1240,9 +1241,9 @@ async function start() {
 
         if (dailyLimit) {
           await sleep(200)
-          bot.state = 'paused';
+          paused = true;
           setTimeout(() => {
-            bot.state = null;
+            paused = false;
             logmc("§6[§bTPM§6] §cBot is now active again! Daily limit has reset.");
           }, untilest8);
           break;
@@ -1296,7 +1297,7 @@ async function start() {
         }
 
         if (dailyLimit) {
-          bot.state = 'paused';
+          paused = true;
         }
 
         break;
@@ -1642,7 +1643,7 @@ async function start() {
     let auctionID;
     let currentTime = Date.now();
     if (usingBaf) {
-      if (!bot.state && currentTime - lastAction > delay && !bot.currentWindow) {
+      if (!paused && !bot.state && currentTime - lastAction > delay && !bot.currentWindow) {
         lastLeftBuying = currentTime;
         bot.state = 'buying';
         auctionID = data.id;
@@ -1696,7 +1697,7 @@ async function start() {
           debug(`[After update] Last ID: ${lastID} Current ID: ${bot.currentWindow?.id}`)
         }
         if (currentTime - lastAction < delay) reasons.push(`the last action was too recent`);
-        if (bot.state !== 'moving' && bot.state !== 'paused') {
+        if (bot.state !== 'moving' && !paused) {
           logmc(`§3Adding ${itemName}§3 to the pipeline because ${reasons.join(' and ')}!`);
           stateManger.add(noColorCodes(itemName), 69, 'buying');
         }
@@ -1738,7 +1739,7 @@ async function start() {
         }, 5000);
       }
     } else {
-      if (!bot.state && currentTime - lastAction > delay && !bot.currentWindow) {
+      if (!paused && !bot.state && currentTime - lastAction > delay && !bot.currentWindow) {
         auctionID = data.id;
         lastLeftBuying = Date.now();
         bot.state = 'buying';
@@ -1779,7 +1780,7 @@ async function start() {
         if (bot.state) reasons.push(`bot state is ${bot.state}`);
         if (bot.currentWindow) reasons.push(`${getWindowName(bot.currentWindow)} is open`);
         if (currentTime - lastAction < delay) reasons.push(`the last action was too recent`);
-        if (bot.state !== 'moving' && bot.state !== 'paused') {
+        if (bot.state !== 'moving' && !paused) {
           logmc(`§3Adding ${itemName}§3 to the pipeline because ${reasons.join(' and ')}!`);
           stateManger.add(weirdName, 69, 'buying');
         }
