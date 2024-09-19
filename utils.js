@@ -523,7 +523,7 @@ async function omgCookie(bot, cookieTime) {
     let cookieIndex = bot.inventory.findInventoryItem('cookie').slot
     cookieIndex = (cookieIndex >= 36 && cookieIndex <= 43) ? (cookieIndex - 36) % 8 : cookieIndex
     debug("cookie index", cookieIndex)
-    if (!cookieIndex || cookieIndex > 9) {
+    if (cookieIndex < 0 || cookieIndex > 8) {
         logmc(`§6[§bTPM§6] §cFailed to use the cookie in slot ${cookieIndex}`);
         return;
     }
