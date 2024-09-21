@@ -381,10 +381,10 @@ async function getReady() {
                         currentlisted -= bids
                         debug("currentlisted updated to", currentlisted)
                         await betterOnce(bot, 'windowClose')
-                        await sleep(350)
+                        await sleep(2500)
                         bot.chat("/ah")
                         await betterOnce(bot, 'windowOpen');
-                        if ((getWindowName(bot.currentWindow)?.includes("Co-op Auction House") || getWindowName(bot.currentWindow)?.includes("Auction House")) && (bot.currentWindow.slots[15].nbt.value.display.value.Name.value?.includes("Manage Auctions")) || bot.currentWindow.slots[15].nbt.value.display.value.Name.value?.includes("Create Auction")) {
+                        if ((getWindowName(bot?.currentWindow)?.includes("Co-op Auction House") || getWindowName(bot?.currentWindow)?.includes("Auction House")) && (bot?.currentWindow?.slots[15]?.nbt?.value?.display?.value?.Name?.value?.includes("Manage Auctions")) || bot?.currentWindow?.slots[15]?.nbt?.value?.display?.value?.Name?.value?.includes("Create Auction")) {
                           bot.currentWindow.slots.every(async item => {
                             if (item == null) { return }
                             if (item.slot == 15) {
