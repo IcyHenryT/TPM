@@ -111,7 +111,7 @@ showBed = config.showBed || false;
 badFinders = doNotList?.finders ? doNotList?.finders : ['USER'];
 dontListProfitOver = normalNumber(doNotList?.profitOver) ? normalNumber(doNotList?.profitOver) : 50_000_000;
 dontListItems = doNotList?.itemTags ? doNotList?.itemTags : ['HYPERION'];
-underMinProfit = doNotList?.underMinProfit ? doNotList?.underMinProfit : true;
+underMinProfit = doNotList?.underMinProfit === false ? false : true;
 dontListSkins = doNotList?.skins || true;
 privacy = config.keepEverythingPrivate;
 autoCookie = config.autoCookie;
