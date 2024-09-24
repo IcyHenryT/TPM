@@ -54,6 +54,7 @@ function makeTpmWebsocket() {
         });
 
         tws.on('message', (message) => {
+            //debug(message.toString());
             const msg = JSON.parse(message);
             const data = JSON.parse(msg.data);
             switch (msg.type) {

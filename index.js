@@ -20,7 +20,7 @@ const { config, updateConfig } = require('./config.js');
 const nbt = require('prismarine-nbt');
 const { sendFlip, giveTheFunStuff, updateSold, sendFlipFound } = require('./tpmWebsocket.js');
 
-let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, badFinders, waittime, doNotList, useSkip, showBed, privacy, autoCookie, dailyLimit, skipProfit, skipUser, friendIsland, underMinProfit, auctionListHours;
+let ign, bedSpam, discordid, TOS, webhook, usInstance, showTargetPrice, clickDelay, delay, usingBaf, session, badFinders, waittime, doNotList, useSkip, showBed, privacy, autoCookie, dailyLimit, skipProfit, skipUser, friendIsland, underMinProfit, auctionListHours;
 
 function testign() {
   if (config.username.trim() === '') {
@@ -105,6 +105,7 @@ percentOfTarget = config.percentOfTarget;
 relist = config.relist;
 ownAuctions = config.ownAuctions;
 showBed = config.showBed || false;
+showTargetPrice = config.showTargetPrice || false;
 badFinders = doNotList?.finders ? doNotList?.finders : ['USER'];
 dontListProfitOver = normalNumber(doNotList?.profitOver) ? normalNumber(doNotList?.profitOver) : 50_000_000;
 dontListItems = doNotList?.itemTags ? doNotList?.itemTags : ['HYPERION'];
@@ -121,7 +122,7 @@ if (auctionListHours >= 24) {
   if (auctionListHours > 336) {
     itemDurationVisual = `14 Days`;
   } else {
-    itemDurationVisual = `${Math.floor(auctionListHours / 24)} day`
+    itemDurationVisual = `${Math.floor(auctionListHours / 24)} Day`
   }
 } else {
   itemDurationVisual = `${auctionListHours.toString()} Hour`;
@@ -988,7 +989,7 @@ async function start() {
   let old = bot.state;
   setInterval(async () => {
     //Queue
-    debug(`(statemanger if) Paused?: ${paused} config.dailyLimit: ${config.dailyLimit}`)
+    //debug(`(statemanger if) Paused?: ${paused} config.dailyLimit: ${config.dailyLimit}`)
     let toRun = false;
     let worked = true;
     const current = stateManger.get();
@@ -1406,13 +1407,13 @@ async function start() {
     }
     if (text.includes("You were kicked while joining that server!")) {
       bot.state = 'moving';
-      await sleep(5000)
+      await sleep(20000)
       bot.chat("/play sb")
       debug("Warping to skyblock")
     }
     if (text.includes("Cannot join SkyBlock")) {
       bot.state = 'moving';
-      await sleep(5000)
+      await sleep(20000)
       bot.chat("/play sb")
       debug("Warping to skyblock")
     }
@@ -1424,13 +1425,13 @@ async function start() {
     }
     if (text.includes("There was a problem joining SkyBlock, try again in a moment!")) {
       bot.state = 'moving';
-      await sleep(5000)
+      await sleep(20000)
       debug("Warping to lobby")
       bot.chat("/skyblock")
     }
     if (text.includes("Couldn't warp you! Try again later.")) {
       bot.state = 'moving';
-      await sleep(5000)
+      await sleep(20000)
       bot.chat("/locraw")
       debug("rechecking location bc warp failed")
     }
@@ -1541,6 +1542,7 @@ async function start() {
         return;
       }
       const itemBed = showBed ? webhookPricing[item].bed : "";
+      const itemTarget = showTargetPrice ? `, target: \`\`${formatNumber(webhookPricing[item].target)}\`\`` : "";
       const auctionUrl = `https://sky.coflnet.com/auction/${webhookPricing[item].auctionId}`;
       const profit = utils.IHATETAXES(webhookPricing[item].target) - utils.onlyNumbers(price);
       const purse = utils.formatNumber(getPurse(bot, recentPurse) - parseInt(String(price).replace(/,/g, ''), 10));
@@ -1553,7 +1555,7 @@ async function start() {
           const embed = new MessageBuilder()
             .setFooter(`TPM - Found by ${nicerFinders(webhookPricing[item].finder)} - Purse: ${purse} `, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
             .setTitle('Item purchased')
-            .addField('', `Bought [\`\`${utils.noColorCodes(match1[1])}\`\`](${auctionUrl}) for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit) in \`\`${buyspeed}ms\`\` ${itemBed}`)
+            .addField('', `Bought [\`\`${utils.noColorCodes(match1[1])}\`\`](${auctionUrl}) for \`${price} coins\` (\`${utils.formatNumber(profit)}\` profit${itemTarget}) in \`\`${buyspeed}ms\`\` ${itemBed}`)
             .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
             .setColor(2615974);
           sendDiscord(embed)
@@ -1954,13 +1956,22 @@ async function start() {
   async function itemLoad(slot, alreadyLoaded = false) {
     return new Promise((resolve, reject) => {
       let index = 1;
-      const first = bot.currentWindow?.slots[slot];
-      const interval = setInterval(() => {
+      const first = bot.currentWindow?.slots[slot]?.name;
+      debug(`Started item load with ${first} in slot`);
+      const interval = alreadyLoaded ? setInterval(() => {
         const check = bot.currentWindow?.slots[slot];
-        if ((check && !alreadyLoaded) || (alreadyLoaded && check !== first)) {
+        if (check?.name !== first) {
           clearInterval(interval);
           resolve(check);
-          debug(`Found item on ${index}`);
+          debug(`Found ${check?.name} on ${index}`);
+        }
+        index++
+      }, 1) : setInterval(() => {
+        const check = bot.currentWindow?.slots[slot];
+        if (check) {
+          clearInterval(interval);
+          resolve(check);
+          debug(`Found ${check?.name} on ${index}`);
         }
         index++
       }, 1);

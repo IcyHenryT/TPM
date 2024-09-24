@@ -5,7 +5,7 @@ const axios = require('axios');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
 let { config, updateConfig } = require('./config.js');
 const { getPackets } = require('./packetStuff.js');
-const version = '1.5.2';
+const version = '1.5.3';
 debug(`Using TPM version ${version}!`);
 let webhook;
 let id = config.discordID;
