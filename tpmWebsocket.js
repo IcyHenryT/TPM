@@ -2,7 +2,7 @@ const WebSocket = require('ws');
 const { config } = require('./config.js');
 const { solveCaptcha } = require('./websocketHelper.js');
 const { logmc, error } = require('./logger.js');
-const { sendPingStats, noColorCodes } = require('./utils.js');
+const { sendPingStats, noColorCodes, sendDiscord, getStats } = require('./utils.js');
 const { ws } = require(`./websocketHelper.js`);
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
 
@@ -16,6 +16,7 @@ const discordID = config.discordID;
 const ign = config.username;
 const private = config.keepEverythingPrivate
 let settings = null;
+let profitList = [];
 
 if (webhook) {
     webhook = new Webhook(webhook);
@@ -63,6 +64,9 @@ function makeTpmWebsocket() {
                 case "stats":
                     sendPingStats(ws, handleCommand, bot, sold, bought);
                     break;
+                case "allStats":
+                    getStats(ws, handleCommand, bot, sold, profitList);
+                    break;
                 case "command":
                     let messageList = [];
                     let started = Date.now()
@@ -70,18 +74,17 @@ function makeTpmWebsocket() {
                         messageList.push(message)
                         if (messageList.length == 10 || Date.now() - started > 10_000) {
                             ws.off('messageText', get10Messages);
-                            if (webhook) {
-                                const embed = new MessageBuilder()
-                                    .setFooter(`The "Perfect" Macro`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
-                                    .setTitle(`Last ${messageList.length} messages`)
-                                    .addField(`Ran command /cofl ${data.message.replace('/cofl ', '')}`, noColorCodes(messageList.join('\n')))
-                                    .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
-                                webhook.send(embed);
-                            }
+                            const embed = new MessageBuilder()
+                                .setFooter(`The "Perfect" Macro`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437')
+                                .setTitle(`Last ${messageList.length} messages`)
+                                .addField(`Ran command /cofl ${data.message.replace('/cofl ', '')}`, noColorCodes(messageList.join('\n')))
+                                .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
+                            sendDiscord(embed);
                         }
                     }
                     handleCommand(`/cofl ${data.message.replace('/cofl ', '')}`);
-                    ws.on('messageText', get10Messages)
+                    ws.on('messageText', get10Messages);
+                    break;
             }
         });
 
@@ -125,6 +128,7 @@ makeTpmWebsocket();
 
 function sendFlip(auctionId, profit, price, bed, name, finder, buyspeed) {
     bought++;
+    profitList.push(profit);
     if (tws && tws.readyState === WebSocket.OPEN) {
         tws.send(JSON.stringify({
             type: "flip",

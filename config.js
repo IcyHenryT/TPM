@@ -1,6 +1,7 @@
 const fs = require('fs');
 const JSON5 = require('json5');
 const { patch } = require('golden-fleece');
+const { debug } = require('./logger.js');
 
 const defaultConfig = `{
   // Put username of your account here.
@@ -65,6 +66,9 @@ const defaultConfig = `{
   //Flip on frend island (i am NOT adding a check for if their island is closed so if youre dumb with this its your fault L bozo) (put frend ign between the quotes and leave as "" for nothing)
   "friendIsland": "",
 
+  //Change how long auctions are listed for
+  "auctionListHours": 48,
+
   "doNotList":{
 
     //Finders to not list. Options: USER, CraftCost, TFM, AI, SNIPER, STONKS, FLIPPER
@@ -96,16 +100,27 @@ const defaultConfig = `{
 
 }`;
 
+const parsedDefaultConfig = JSON5.parse(defaultConfig);
+
 if (!fs.existsSync('./config.json5')) {
   fs.writeFileSync('./config.json5', defaultConfig);
 }
+
+const config = { ...parsedDefaultConfig, ...JSON5.parse(fs.readFileSync('./config.json5', 'utf8')) };
 
 function updateConfig(data) {//golden-fleece my savior idk how to spell that
   const newConfig = patch(defaultConfig, data);
   fs.writeFileSync('./config.json5', newConfig, 'utf-8');
 }
 
+function logConfig(fakeConfig) {
+  fakeConfig.webhook = Array.isArray(fakeConfig.webhook);
+  delete fakeConfig.session;
+  debug(JSON.stringify(fakeConfig))
+}
 
-const config = JSON5.parse(fs.readFileSync('./config.json5', 'utf8'));
+updateConfig(config);
+
+logConfig({ ...config });
 
 module.exports = { config, updateConfig };

@@ -9,7 +9,7 @@ const utils = require(`./utils.js`);
 const { randomUUID } = require('crypto');
 const axios = require('axios');
 const stateManger = require(`./state.js`);
-const { noColorCodes, sendDiscord, nicerFinders, normalizeDate, TheBig3, getCookiePrice, IHATETAXES, randomWardenDye, formatNumber, sleep, getWindowName, getPurse, relistCheck, addCommasToNumber, betterOnce, normalNumber, sendPingStats, omgCookie, checkVersion, visitFrend } = require('./utils.js');
+const { noColorCodes, sendDiscord, nicerFinders, normalizeDate, TheBig3, getStats, getCookiePrice, IHATETAXES, randomWardenDye, formatNumber, sleep, getWindowName, getPurse, relistCheck, addCommasToNumber, betterOnce, normalNumber, sendPingStats, omgCookie, checkVersion, visitFrend } = require('./utils.js');
 const { MessageBuilder } = require('discord-webhook-node');
 const { getPackets, makePackets } = require('./packetStuff.js');
 const { silly, debug, error, info, logmc } = require('./logger.js');
@@ -20,7 +20,7 @@ const { config, updateConfig } = require('./config.js');
 const nbt = require('prismarine-nbt');
 const { sendFlip, giveTheFunStuff, updateSold, sendFlipFound } = require('./tpmWebsocket.js');
 
-let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, /*discordbot,*/ badFinders, waittime, doNotList, useSkip, showBed, privacy, autoCookie, dailyLimit, skipProfit, skipUser, friendIsland, underMinProfit;
+let ign, bedSpam, discordid, TOS, webhook, usInstance, clickDelay, delay, usingBaf, session, badFinders, waittime, doNotList, useSkip, showBed, privacy, autoCookie, dailyLimit, skipProfit, skipUser, friendIsland, underMinProfit, auctionListHours;
 
 function testign() {
   if (config.username.trim() === '') {
@@ -58,7 +58,6 @@ function testDiscordIgn() {
   if (!userInput || isNaN(parseInt(userInput))) {
     logmc(`§cThat is not a valid discord ID`);
     testDiscordIgn();
-    console.log(userInput);
     return;
   }
   config.discordID = userInput;
@@ -72,7 +71,6 @@ function testWebhook(ranAlready = false) {
   if ((!userInput || !userInput?.includes('https')) && !userInput?.includes('none')) {
     logmc(`§cThat is not a valid discord webhook`);
     testWebhook(true);
-    console.log(userInput);
     return;
   } else if (userInput.includes('none')) {
     config.webhook = false;
@@ -97,9 +95,8 @@ TOS = config.TOS;
 session = config.session;
 bedSpam = config.bedSpam;
 discordid = config.discordID;
-//discordbot = config.discordBotToken;
 useSkip = config.useSkip;
-delay = useSkip ? config.delay + 150 : config.delay;
+delay = useSkip && config.delay < 250 ? config.delay + 150 : config.delay;
 clickDelay = config.clickDelay;
 waittime = config.waittime;
 usingBaf = config.useBafSocket;
@@ -118,6 +115,17 @@ autoCookie = config.autoCookie;
 dailyLimit = config.dailyLimit;
 skipProfit = config.skipProfit;
 skipUser = config.skipUser;
+auctionListHours = config.auctionListHours || 48;
+let itemDurationVisual;
+if (auctionListHours >= 24) {
+  if (auctionListHours > 336) {
+    itemDurationVisual = `14 Days`;
+  } else {
+    itemDurationVisual = `${Math.floor(auctionListHours / 24)} day`
+  }
+} else {
+  itemDurationVisual = `${auctionListHours.toString()} Hour`;
+}
 
 let ping = "";
 if (discordid) ping = `<@${discordid}>`;
@@ -165,6 +173,7 @@ let lastIDTime = Date.now();
 let lastCrated = Date.now() + 50000;
 let happened = false;
 let paused = false;
+let profitList = [];
 
 function betterClick(slot, mode1 = 0, mode2 = 0) {
   if (!bot.currentWindow) {
@@ -359,24 +368,16 @@ async function getReady() {
                             let itemName = item.nbt.value.display.value.Name.value;
                             if (!config.ownAuctions) {
                               if (itemName.includes("Claim All") && bot.currentWindow) {
-                                //console.log(`Found 'Claim All' at slot ${slot}`);
-                                // Perform your action here
-
                                 betterClick(slot, 0, 0);
                               }
                             } else {
                               if (itemName.includes("Claim Your") && bot.currentWindow) {
-                                //console.log(`Found 'Claim Your Listings Only' at slot ${slot}`);
-                                // Perform your action here
-
                                 betterClick(slot, 0, 0);
                               }
                             }
 
                           }
                         });
-                        // 
-                        // betterClick(30, 0, 0);
                         debug("claimed multiple already sold auctions");
                         currentlisted -= bids
                         debug("currentlisted updated to", currentlisted)
@@ -469,11 +470,11 @@ async function getReady() {
   bot.state = null;
   startWS(session);
   lastAction = Date.now();
-  if(underMinProfit){
-    const getMinProfit = (settings) =>{
+  if (underMinProfit) {
+    const getMinProfit = (settings) => {
       const data = JSON.parse(settings.data);
       data.forEach(setting => {
-        if(setting.key === "minProfit"){
+        if (setting.key === "minProfit") {
           underMinProfit = setting.value;
           ws.off("jsonSettings", getMinProfit);
           return;
@@ -584,7 +585,7 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
   }
   uuidFound = false;
   await betterOnce(bot, 'windowOpen');
-  if ((getWindowName(bot.currentWindow)?.includes("Create BIN Auction")) && bot.currentWindow.slots[33].nbt.value.display.value.Name.value?.includes("6 Hours")) {
+  if ((getWindowName(bot.currentWindow)?.includes("Create BIN Auction")) && !bot.currentWindow.slots[33].nbt.value.display.value.Name.value?.includes(itemDurationVisual)) {
     debug("Auction Duration Menu Opened")
     await sleep(200)
     betterClick(33, 0, 0)
@@ -644,11 +645,24 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
   }
   await betterOnce(bot, 'windowOpen');
   if (bot.currentWindow?.title?.includes("Auction Duration")) {
-    betterClick(14, 0, 0)
-    debug("Auction Duration set to 2 days")
+    if (auctionListHours !== 48) {
+      betterClick(16, 0, 0);
+      await sleep(350);
+      bot._client.write('update_sign', {
+        location: bot.entity.position.offset(-1, 0, 0),
+        text1: `\"${auctionListHours.toString()}\"`,
+        text2: '{"italic":false,"extra":["^^^^^^^^^^^^^^^"],"text":""}',
+        text3: '{"italic":false,"extra":["    Auction    "],"text":""}',
+        text4: '{"italic":false,"extra":["     hours     "],"text":""}'
+      });
+      debug(`Auction Duration set to ${auctionListHours}`);
+    } else {
+      debug(`Auction Duration set to 48h`);
+      betterClick(14, 0, 0);
+    }
   }
   await betterOnce(bot, 'windowOpen');
-  if ((getWindowName(bot.currentWindow)?.includes("Create BIN Auction") || getWindowName(bot.currentWindow)?.includes("Create Auction")) && bot.currentWindow.slots[33].nbt.value.display.value.Name.value?.includes("2 Days")) {
+  if ((getWindowName(bot.currentWindow)?.includes("Create BIN Auction") || getWindowName(bot.currentWindow)?.includes("Create Auction")) && bot.currentWindow.slots[33].nbt.value.display.value.Name.value?.includes(itemDurationVisual)) {
     if (getWindowName(bot.currentWindow)?.includes('Create Auction')) {
       await sleep(250)
       betterClick(48, 0, 0)
@@ -702,7 +716,7 @@ async function relistHandler(purchasedAhids, purchasedPrices) {
   debug(numWithCommas)
   await sleep(500)
   debug("Debug time:", getWindowName(bot.currentWindow), bot.currentWindow.slots[31].nbt.value.display.value.Name.value, bot.currentWindow.slots[33].nbt.value.display.value.Name.value)
-  if (getWindowName(bot.currentWindow)?.includes("Create BIN Auction") && bot.currentWindow.slots[31].nbt.value.display.value.Name.value?.includes(`${numWithCommas} coins`) && bot.currentWindow.slots[33].nbt.value.display.value.Name.value?.includes("2 Days")) {
+  if (getWindowName(bot.currentWindow)?.includes("Create BIN Auction") && bot.currentWindow.slots[31].nbt.value.display.value.Name.value?.includes(`${numWithCommas} coins`) && bot.currentWindow.slots[33].nbt.value.display.value.Name.value?.includes(itemDurationVisual)) {
     betterClick(29, 0, 0)
     debug("bid confirmed, finalizing auction listing")
     lastListedIds.push(idToRelist);
@@ -783,7 +797,7 @@ async function start() {
         updateConfig(config);
       })
       .catch((error) => {
-        console.error(`Error fetching UUID for ign ${bot.username}:`, error);
+        error(`Error fetching UUID for ign ${bot.username}:`, error);
       });
   });
   bot.state = 'moving';
@@ -830,28 +844,65 @@ async function start() {
             bot.state = null;
             break;
           case 'feather':
+            lastAction = firstGui;
             item = (await itemLoad(31, true)).name;
             if (item === 'gold_block') {
-              betterClick(31, 0, 0);
-              currentlisted--;
-              lastAction = firstGui;
+              if (ownAuctions) {
+                const goldBlock = bot.currentWindow?.slots[13]?.nbt?.value?.display?.value?.Lore?.value?.value;
+                const found = goldBlock.find(line => {
+                  const result = noColorCodes(line)?.includes(ign);
+                  debug(`Found line ${noColorCodes(line)} and ${result}`);
+                  return result;
+                });
+                if (found) {
+                  betterClick(31, 0, 0);
+                  currentlisted--;
+                  bot.state = null;
+                } else {
+                  logmc("§6[§bTPM§6] Item was sold by coop! Not claiming.");
+                  bot.closeWindow(bot.currentWindow);
+                  bot.state = null;
+                }
+              } else {
+                betterClick(31, 0, 0);
+                currentlisted--;
+                bot.state = null;
+              }
               break;
             } else if (item === 'potato') {
               logmc(`§6[§bTPM§6] Potatoed, closing GUI.`)
               bot.closeWindow(bot.currentWindow);
-              lastAction = firstGui;
+              //lastAction = firstGui;
             } else {
               error(`Item ${item} not found for feather. Please report this`)
               bot.closeWindow(bot.currentWindow);
-              lastAction = firstGui;
+              //lastAction = firstGui;
             }
             bot.state = null;
             break;
           case 'gold_block':
-            betterClick(31, 0, 0);
-            currentlisted--;
             lastAction = firstGui;
-            bot.state = null;
+            if (ownAuctions) {
+              const goldBlock = bot.currentWindow?.slots[13]?.nbt?.value?.display?.value?.Lore?.value?.value;
+              const found = goldBlock.find(line => {
+                const result = noColorCodes(line)?.includes(ign);
+                debug(`Found line ${noColorCodes(line)} and ${result}`);
+                return result;
+              });
+              if (found) {
+                betterClick(31, 0, 0);
+                currentlisted--;
+                bot.state = null;
+              } else {
+                logmc("§6[§bTPM§6] Item was sold by coop! Not claiming.");
+                bot.closeWindow(bot.currentWindow);
+                bot.state = null;
+              }
+            } else {
+              betterClick(31, 0, 0);
+              currentlisted--;
+              bot.state = null;
+            }
             break;
           case "bed":
             logmc(`§6[§bTPM§6] Found a bed!`);
@@ -937,6 +988,7 @@ async function start() {
   let old = bot.state;
   setInterval(async () => {
     //Queue
+    debug(`(statemanger if) Paused?: ${paused} config.dailyLimit: ${config.dailyLimit}`)
     let toRun = false;
     let worked = true;
     const current = stateManger.get();
@@ -945,14 +997,15 @@ async function start() {
     const time = Date.now();
     if (!paused && current && bot.state === null && time - lastAction > delay) {
       const command = current.command;
-      lastAction = time;
       if (command === 'claim') {
         bot.state = 'claiming';
+        lastAction = time;
         await claimBought();
         toRun = 'claimBought';
         bot.state = null;
       } else if (current.state === 'claiming') {
         bot.state = 'claiming';
+        lastAction = time;
         await claimSold(command);
         toRun = 'claimSold';
         bot.state = null;
@@ -966,6 +1019,7 @@ async function start() {
           logmc("§6[§bTPM§6] §cNot attempting to relist because your inventory is full. You will need to log in and clear your inventory to continue")
           bot.state = null;
         } else if (lastAction - lastRelistCheck > 10000) {
+          lastAction = time;
           lastRelistCheck = lastAction;
           await sleep(10000)
           if (relistCheck(currentlisted, totalslots, bot.state)) {
@@ -989,7 +1043,8 @@ async function start() {
               currentOpen = ahid
               quickProfit = IHATETAXES(ahhhhh.profit) - ahhhhh.startingBid;
               quickFinder = ahhhhh.finder.toUpperCase()
-              bot.chat(`/viewauction ${ahid}`);
+              packets.sendMessage(`/viewauction ${ahid}`);
+              lastAction = time;
               toRun = `/viewauction ${ahid}`
               relistObject[command] = {
                 id: ahid,
@@ -1237,11 +1292,14 @@ async function start() {
         let hours = Math.floor(untilest8 / 3600000);
         let minutes = Math.floor((untilest8 % 3600000) / 60000);
 
-        logmc(`§6[§bTPM§6] §cWomp Womp, you hit daily limit ): Pausing bot for ${hours} hours and ${minutes} minutes until it resets`);
-
+        //logmc(`§6[§bTPM§6] §cWomp Womp, you hit daily limit ): Pausing bot for ${hours} hours and ${minutes} minutes until it resets`);
+        debug(`daily limit paused: ${paused} config.dailyLimit: ${config.dailyLimit}`)
         if (dailyLimit) {
+          logmc(`§6[§bTPM§6] §cWomp Womp, you hit daily limit ): Pausing bot for ${hours} hours and ${minutes} minutes until it resets`);
           await sleep(200)
+          debug("Daily limit reached, pausing bot");
           paused = true;
+          debug(`paused should now be true: ${paused}`);
           setTimeout(() => {
             paused = false;
             logmc("§6[§bTPM§6] §cBot is now active again! Daily limit has reset.");
@@ -1250,9 +1308,9 @@ async function start() {
         }
 
         let messageyyY = '';
-
+        debug(`config check befoer webhook message set ${config.dailyLimit}`)
         if (config.dailyLimit) messageyyY = `You can't flip until 8pm est. Pausing bot for ${hours} hours and ${minutes} minutes until limit resets`
-        else messageyyY = `'You can't flip until 8pm est :('`
+        else messageyyY = `You can't flip until 8pm est :(`
         if (webhook) {
           try {
             const webhhookData = {
@@ -1294,10 +1352,6 @@ async function start() {
               .setColor(15755110);
             sendDiscord(embed);
           }
-        }
-
-        if (dailyLimit) {
-          paused = true;
         }
 
         break;
@@ -1490,6 +1544,7 @@ async function start() {
       const auctionUrl = `https://sky.coflnet.com/auction/${webhookPricing[item].auctionId}`;
       const profit = utils.IHATETAXES(webhookPricing[item].target) - utils.onlyNumbers(price);
       const purse = utils.formatNumber(getPurse(bot, recentPurse) - parseInt(String(price).replace(/,/g, ''), 10));
+      profitList.push(profit);
       setTimeout(() => {
         recentPurse = getPurse(bot);
       }, 1000)
@@ -1617,6 +1672,9 @@ async function start() {
         case '!c':
           solveCaptcha(args[1]);
           break;
+        case "/stats":
+          getStats(ws, handleCommand, bot, soldItems, profitList);
+          break;
       }
       askUser();
     });
@@ -1697,6 +1755,7 @@ async function start() {
           debug(`[After update] Last ID: ${lastID} Current ID: ${bot.currentWindow?.id}`)
         }
         if (currentTime - lastAction < delay) reasons.push(`the last action was too recent`);
+        debug(`(pipeline add 4) Paused?: ${paused} config.dailyLimit: ${config.dailyLimit}`)
         if (bot.state !== 'moving' && !paused) {
           logmc(`§3Adding ${itemName}§3 to the pipeline because ${reasons.join(' and ')}!`);
           stateManger.add(noColorCodes(itemName), 69, 'buying');
@@ -1708,6 +1767,7 @@ async function start() {
         auctionId: auctionID,
         bed: bed,
         finder: data.finder,
+        profit: IHATETAXES(data.target) - data.startingBid
       };
       debug(`Added ${noColorCodes(itemName)} to webhookPricing`)
       idQueue.push(data.id);

@@ -6,6 +6,8 @@ const { config } = require('./config.js');
 const { getPackets } = require('./packetStuff.js');
 const axios = require('axios');
 const nbt = require('prismarine-nbt');
+const FormData = require('form-data');
+const start = Date.now();
 
 let tries = 0;
 let webhook = config.webhook;
@@ -296,7 +298,8 @@ async function TheBig3(ws, handleCommand, bot) {
         checkCoflPing(ws, handleCommand),
         checkHypixelPing(bot)
     ]);
-    return `\`\`Cofl Delay:\`\` ${delay} \n\`\`Cofl Ping:\`\` ${coflPing} \n\`\`Hypixel Ping:\`\` ${hypixelPing}`;
+    return { delay: delay, coflPing: coflPing, hypixelPing: hypixelPing };
+    //return `\`\`Cofl Delay:\`\` ${delay} \n\`\`Cofl Ping:\`\` ${coflPing} \n\`\`Hypixel Ping:\`\` ${hypixelPing}`;  old format just in case
 }
 
 const colorCodes = [
@@ -323,6 +326,42 @@ function randomWardenDye() {
     return colorCodes[Math.floor(Math.random() * colorCodes.length)];
 }
 
+const luckyDyeColorCodes = [
+    "8912695",
+    "8517692",
+    "8254527",
+    "7991106",
+    "7596356",
+    "7333191",
+    "6938441",
+    "6608971",
+    "6148685",
+    "5753934",
+    "5424465",
+    "4898386",
+    "4503378",
+    "4043091",
+    "3582803",
+    "3188051",
+    "2727764",
+    "2333012",
+    "1938771",
+    "1544531",
+    "1018962",
+    "624722",
+    "33616",
+    "32079",
+    "30541",
+    "29515",
+    "28489",
+    "27719",
+    "26948"
+]
+
+function randomLucky() {
+    return luckyDyeColorCodes[Math.floor(Math.random() * luckyDyeColorCodes.length)];
+}
+
 function normalNumber(num) {
     if (typeof num === 'number') return num;
     if (!num) return NaN;
@@ -340,11 +379,11 @@ function normalNumber(num) {
 }
 
 async function sendPingStats(ws, handleCommand, bot, sold, bought) {
-    const bigThree = await TheBig3(ws, handleCommand, bot);
+    const { delay, coflPing, hypixelPing } = await TheBig3(ws, handleCommand, bot);
     const embed = new MessageBuilder()
         .setFooter(`TPM - Bought ${bought} - Sold ${sold}`, `https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437`)
         .setTitle('Ping!')
-        .addField('', bigThree)
+        .addField('', `**Cofl Delay:** ${delay}\n**Cofl Ping:** ${coflPing}\n**Hypixel Ping:** ${hypixelPing}`)
         .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
         .setColor(randomWardenDye());
     sendDiscord(embed);
@@ -593,7 +632,7 @@ const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
 
 process.on('uncaughtException', async (err) => {
     error('There was an uncaught exception:', err);
-    const webhhookData = {
+    const webhookData = {
         username: "TPM",
         avatar_url: "https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless",
         content: ping,
@@ -602,20 +641,26 @@ process.on('uncaughtException', async (err) => {
             color: 15755110,
             description: `Reason: ${err} report this to a TPM dev!`,
         }]
-    }
+    };
+    const logFilePath = path.join(__dirname, 'logs', 'latest.log');
+    const logFile = fs.createReadStream(logFilePath);
+    const form = new FormData();
+    form.append('file', logFile, 'latest.log');
+    form.append('payload_json', JSON.stringify(webhookData));
     if (Array.isArray(config.webhook)) {
         for (const hook of config.webhook) {
-            await axios.post(hook, webhhookData);
+            await axios.post(hook, form, { headers: form.getHeaders() });
         }
     } else {
-        await axios.post(config.webhook, webhhookData);
+        await axios.post(config.webhook, form, { headers: form.getHeaders() });
     }
+
     process.exit(1);
 });
 
 process.on('unhandledRejection', async (reason) => {
     error('There was an uncaught exception:', reason);
-    const webhhookData = {
+    const webhookData = {
         username: "TPM",
         avatar_url: "https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless",
         content: ping,
@@ -624,15 +669,38 @@ process.on('unhandledRejection', async (reason) => {
             color: 15755110,
             description: `Reason: ${reason} report this to a TPM dev!`,
         }]
-    }
+    };
+    const logFilePath = path.join(__dirname, 'logs', 'latest.log');
+    const logFile = fs.createReadStream(logFilePath);
+    const form = new FormData();
+    form.append('file', logFile, 'latest.log');
+    form.append('payload_json', JSON.stringify(webhookData));
     if (Array.isArray(config.webhook)) {
         for (const hook of config.webhook) {
-            await axios.post(hook, webhhookData);
+            await axios.post(hook, form, { headers: form.getHeaders() });
         }
     } else {
-        await axios.post(config.webhook, webhhookData);
+        await axios.post(config.webhook, form, { headers: form.getHeaders() });
     }
+
     process.exit(1);
 });
 
-module.exports = { noColorCodes, sendDiscord, randomWardenDye, sendPingStats, onlyNumbers, normalizeDate, normalNumber, IHATETAXES, formatNumber, sleep, checkHypixelPing, TheBig3, checkCoflDelay, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders, betterOnce, checkCoflPing, omgCookie, removeFromAh, getCookiePrice, checkVersion, visitFrend, throttle }
+async function getStats(ws, handleCommand, bot, soldNum, profitList) {
+    const { delay, coflPing, hypixelPing } = await TheBig3(ws, handleCommand, bot);
+    const boughtNum = profitList.length;
+    const timeSpan = Date.now() - start;
+    let overallProfit = 0;
+    let uff = 0;
+    profitList.forEach(profit => { if (!isNaN(profit) && profit > 0) overallProfit += profit; else uff++ });
+    const profitPerHour = overallProfit / (timeSpan / 3600000);
+    const embed = new MessageBuilder()
+        .setFooter(`TPM - Bought ${boughtNum} - Sold ${soldNum}`, `https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437`)
+        .setTitle(`Stats for ${config.username}!`)
+        .addField('', `**Profit/Hour:** ${formatNumber(profitPerHour)}\n**Total Profit:** ${formatNumber(overallProfit)}\n**User Finder Flips:** ${uff}\n**Cofl Delay:** ${delay}\n**Cofl Ping:** ${coflPing}\n**Hypixel Ping:** ${hypixelPing}\n**Purse:** ${formatNumber(getPurse(bot) || 0)}\n\n**Started** <t:${Math.floor(start / 1000)}:R> `)
+        .setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)
+        .setColor(randomLucky());
+    sendDiscord(embed);
+}
+
+module.exports = { noColorCodes, getStats, sendDiscord, randomWardenDye, sendPingStats, onlyNumbers, normalizeDate, normalNumber, IHATETAXES, formatNumber, sleep, checkHypixelPing, TheBig3, checkCoflDelay, getWindowName, saveData, getPurse, relistCheck, addCommasToNumber, nicerFinders, betterOnce, checkCoflPing, omgCookie, removeFromAh, getCookiePrice, checkVersion, visitFrend, throttle }
