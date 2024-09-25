@@ -405,7 +405,7 @@ async function sendDiscord(embed, attempt = 0) {
         } catch {
             if (attempt < 3) {
                 await sleep(5000)
-                sendDiscord(embed, attempt + 1);
+                await sendDiscord(embed, attempt + 1);
             }
         }
     }
@@ -601,7 +601,7 @@ async function getCookiePrice() {
     try { return Math.round((await axios.get('https://api.hypixel.net/v2/skyblock/bazaar')).data.products.BOOSTER_COOKIE.quick_status.buyPrice + 5_000_000) } catch (e) { error(e) };
 }
 
-async function checkVersion(currVersion) { try { const { data: { tag_name: latestVersion } } = await axios.get("https://api.github.com/repos/IcyHenryT/TPM/releases/latest"); latestVersion.split('.').some((version, i) => version > (currVersion.split('.')[i] || 0)) && logmc("§6[§bTPM§6] §c new version" + latestVersion + " available, you should totally update to the new one and relaunch!! :DD [Current: " + currVersion + "]"); } catch (e) { } }
+async function checkVersion(currVersion) { try { const { data: { tag_name: latestVersion } } = await axios.get("https://api.github.com/repos/IcyHenryT/TPM/releases/latest"); if (latestVersion !== currVersion) { logmc("§6[§bTPM§6] §cNew version " + latestVersion + " available, you should totally update to the new one and relaunch!! :DD [Current: " + currVersion + "]"); sendDiscord(new MessageBuilder().setColor(15755110).setFooter(`The "Perfect" Macro`, 'https://media.discordapp.net/attachments/1223361756383154347/1263302280623427604/capybara-square-1.png?ex=6699bd6e&is=66986bee&hm=d18d0749db4fc3199c20ff973c25ac7fd3ecf5263b972cc0bafea38788cef9f3&=&format=webp&quality=lossless&width=437&height=437').setTitle("New TPM Update!").addField("", `You're using \`\`v${currVersion}\`\` but \`\`v${latestVersion}\`\` exists!`).setThumbnail(`https://mc-heads.net/head/${config.uuid}.png`)) } } catch (e) { } }
 
 async function visitFrend(bot, frend) {
     if (bot.currentWindow) bot.closeWindow(bot.currentWindow);
@@ -630,8 +630,8 @@ function throttle(func, timeout = 1000) {
 
 const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
 
-process.on('uncaughtException', async (err) => {
-    error('There was an uncaught exception:', err);
+process.on('uncaughtException', async (reason) => {
+    error('There was an uncaught exception:', reason);
     const webhookData = {
         username: "TPM",
         avatar_url: "https://media.discordapp.net/attachments/1235761441986969681/1263290313246773311/latest.png?ex=6699b249&is=669860c9&hm=87264b7ddf4acece9663ce4940a05735aecd8697adf1335de8e4f2dda3dbbf07&=&format=webp&quality=lossless",
@@ -639,23 +639,25 @@ process.on('uncaughtException', async (err) => {
         embeds: [{
             title: 'Yooo we crashed :(',
             color: 15755110,
-            description: `Reason: ${err} report this to a TPM dev!`,
+            description: `Reason: ${reason} report this to a TPM dev!`,
         }]
     };
-    const logFilePath = path.join(__dirname, 'logs', 'latest.log');
+    const logFilePath = path.join(process.pkg ? path.dirname(process.execPath) : __dirname, 'logs', 'latest.log');
     const logFile = fs.createReadStream(logFilePath);
     const form = new FormData();
     form.append('file', logFile, 'latest.log');
     form.append('payload_json', JSON.stringify(webhookData));
     if (Array.isArray(config.webhook)) {
         for (const hook of config.webhook) {
-            await axios.post(hook, form, { headers: form.getHeaders() });
+            axios.post(hook, form, { headers: form.getHeaders() });
         }
     } else {
-        await axios.post(config.webhook, form, { headers: form.getHeaders() });
+        axios.post(config.webhook, form, { headers: form.getHeaders() });
     }
 
-    process.exit(1);
+    setTimeout(() => {
+        process.exit(1);
+    }, 500)
 });
 
 process.on('unhandledRejection', async (reason) => {
@@ -670,20 +672,22 @@ process.on('unhandledRejection', async (reason) => {
             description: `Reason: ${reason} report this to a TPM dev!`,
         }]
     };
-    const logFilePath = path.join(__dirname, 'logs', 'latest.log');
+    const logFilePath = path.join(process.pkg ? path.dirname(process.execPath) : __dirname, 'logs', 'latest.log');
     const logFile = fs.createReadStream(logFilePath);
     const form = new FormData();
     form.append('file', logFile, 'latest.log');
     form.append('payload_json', JSON.stringify(webhookData));
     if (Array.isArray(config.webhook)) {
         for (const hook of config.webhook) {
-            await axios.post(hook, form, { headers: form.getHeaders() });
+            axios.post(hook, form, { headers: form.getHeaders() });
         }
     } else {
-        await axios.post(config.webhook, form, { headers: form.getHeaders() });
+        axios.post(config.webhook, form, { headers: form.getHeaders() });
     }
 
-    process.exit(1);
+    setTimeout(() => {
+        process.exit(1);
+    }, 500)
 });
 
 async function getStats(ws, handleCommand, bot, soldNum, profitList) {
